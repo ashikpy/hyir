@@ -11,10 +11,78 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum UserRole {
-  CANDIDATE
-  RECRUITER
-  ADMIN
+// Single user for personal tracking. In a multi-user app, this would link to auth.
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  avatarUrl    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  applications Application[]
+}
+
+model Application {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Core Information
+  slug              String            @unique
+  companyName       String
+  roleTitle         String
+  status            ApplicationStatus @default(SAVED)
+  dateApplied       DateTime?
+  
+  // Job Details
+  jobType           JobType           @default(FULL_TIME)
+  workplaceType     WorkplaceType     @default(REMOTE)
+  location          String?
+  salary            String?           // Free-form text for flexibility (e.g. "120k - 140k", "$100/hr")
+  applicationUrl    String?
+  jobDescriptionUrl String?
+  
+  // Contact Information
+  contactName       String?
+  contactRole       String?
+  contactEmail      String?
+  contactUrl        String?           // LinkedIn or other profile
+  
+  // Follow-ups & Notes
+  nextFollowUpDate  DateTime?
+  notes             String?           @db.Text
+  resumeVersion     String?
+  portfolioVersion  String?
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  timelineEvents    TimelineEvent[]
+}
+
+model TimelineEvent {
+  id            String            @id @default(cuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  date          DateTime          @default(now())
+  eventType     TimelineEventType
+  description   String?           @db.Text
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  CONTACTED
+  SCREENING
+  INTERVIEW
+  ASSIGNMENT
+  OFFER
+  ACCEPTED
+  REJECTED
+  GHOSTED
+  WITHDRAWN
 }
 
 enum JobType {
@@ -25,102 +93,15 @@ enum JobType {
   INTERNSHIP
 }
 
-enum JobStatus {
-  DRAFT
-  PUBLISHED
-  CLOSED
+enum WorkplaceType {
+  REMOTE
+  HYBRID
+  ONSITE
 }
 
-enum ApplicationStatus {
-  APPLIED
-  UNDER_REVIEW
-  INTERVIEWING
-  OFFERED
-  REJECTED
-}
-
-model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String?
-  avatarUrl    String?
-  role         UserRole      @default(CANDIDATE)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  // Relations
-  companyId    String?
-  company      Company?      @relation(fields: [companyId], references: [id])
-  postedJobs   Job[]         @relation("JobPoster")
-  applications Application[]
-  savedJobs    SavedJob[]
-}
-
-model Company {
-  id          String   @id @default(cuid())
-  name        String
-  logoUrl     String?
-  website     String?
-  description String?
-  location    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  members     User[]
-  jobs        Job[]
-}
-
-model Job {
-  id          String    @id @default(cuid())
-  title       String
-  description String
-  location    String
-  isRemote    Boolean   @default(false)
-  salaryMin   Int?
-  salaryMax   Int?
-  currency    String    @default("USD")
-  type        JobType   @default(FULL_TIME)
-  status      JobStatus @default(PUBLISHED)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relations
-  companyId   String
-  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  postedById  String?
-  postedBy    User?         @relation("JobPoster", fields: [postedById], references: [id], onDelete: SetNull)
-  applications Application[]
-  savedJobs   SavedJob[]
-}
-
-model Application {
-  id          String            @id @default(cuid())
-  resumeUrl   String?
-  coverLetter String?
-  status      ApplicationStatus @default(APPLIED)
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  // Relations
-  jobId       String
-  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  candidateId String
-  candidate   User              @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, candidateId])
-}
-
-model SavedJob {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  // Relations
-  jobId     String
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, userId])
+enum TimelineEventType {
+  STATUS_CHANGE
+  FOLLOW_UP
+  NOTE_ADDED
+  CUSTOM
 }

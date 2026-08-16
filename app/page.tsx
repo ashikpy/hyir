@@ -1,182 +1,233 @@
-import prisma from "@/lib/prisma";
-import Link from "next/link";
+import { prisma } from "@/lib/prisma"
+import { ApplicationStatus, Application } from "@prisma/client"
+import { format, isToday, isPast } from "date-fns"
+import Link from "next/link"
+import { ArrowRight, Clock, Building2, ExternalLink } from "lucide-react"
+import { CompanyLogo } from "@/components/ui/avatars"
 
-async function getJobsCount() {
-  try {
-    const count = await prisma.job.count();
-    return { count, connected: true };
-  } catch (error) {
-    return { count: 0, connected: false };
-  }
+// Ensure dynamic rendering to always fetch latest data
+export const dynamic = 'force-dynamic'
+
+async function getDashboardData() {
+  const totalApps = await prisma.application.count()
+  const activeApps = await prisma.application.count({
+    where: {
+      status: { in: ['APPLIED', 'CONTACTED', 'SCREENING', 'INTERVIEW', 'ASSIGNMENT'] }
+    }
+  })
+  const interviews = await prisma.application.count({
+    where: { status: 'INTERVIEW' }
+  })
+  const offers = await prisma.application.count({
+    where: { status: 'OFFER' }
+  })
+  const recentApps = await prisma.application.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' }
+  })
+  const followUps = await prisma.application.findMany({
+    where: {
+      nextFollowUpDate: { not: null },
+      status: { notIn: ['REJECTED', 'ACCEPTED', 'WITHDRAWN', 'GHOSTED'] }
+    },
+    orderBy: { nextFollowUpDate: 'asc' },
+    take: 5
+  })
+
+  // Get pipeline distribution
+  const statusCounts = await prisma.application.groupBy({
+    by: ['status'],
+    _count: { status: true }
+  })
+
+  return { totalApps, activeApps, interviews, offers, recentApps, followUps, statusCounts }
 }
 
-export default async function Home() {
-  const dbStatus = await getJobsCount();
+function MetricBlock({ label, value }: { label: string, value: number }) {
+  return (
+    <div className="flex flex-col py-6 border-b border-zinc-900">
+      <span className="text-4xl font-light tracking-tight mb-2">{value}</span>
+      <span className="text-sm font-medium text-zinc-500 uppercase tracking-widest">{label}</span>
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: ApplicationStatus }) {
+  const statusConfig: Record<ApplicationStatus, string> = {
+    SAVED: 'text-zinc-500 border-zinc-800',
+    APPLIED: 'text-blue-400 border-blue-400/20',
+    CONTACTED: 'text-purple-400 border-purple-400/20',
+    SCREENING: 'text-amber-400 border-amber-400/20',
+    INTERVIEW: 'text-orange-400 border-orange-400/20',
+    ASSIGNMENT: 'text-indigo-400 border-indigo-400/20',
+    OFFER: 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10',
+    ACCEPTED: 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10',
+    REJECTED: 'text-red-400 border-red-400/20',
+    GHOSTED: 'text-zinc-500 border-zinc-800',
+    WITHDRAWN: 'text-zinc-500 border-zinc-800',
+  }
+
+  const config = statusConfig[status] || statusConfig.SAVED
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
-              J
-            </div>
-            <span className="font-bold text-xl tracking-tight text-white">JobHunt</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-400 font-medium border border-slate-700/50">
-              Prisma + Vercel
-            </span>
-          </div>
+    <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 border rounded-full ${config}`}>
+      {status.replace('_', ' ')}
+    </span>
+  )
+}
 
-          <div className="flex items-center gap-4 text-sm">
-            <a
-              href="https://console.prisma.io"
-              target="_blank"
-              rel="noreferrer"
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              Prisma Console
-            </a>
-            <a
-              href="https://vercel.com"
-              target="_blank"
-              rel="noreferrer"
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              Vercel Dashboard
-            </a>
-          </div>
-        </div>
+export default async function Dashboard() {
+  const data = await getDashboardData()
+
+  const pipelineOrder: ApplicationStatus[] = ['SAVED', 'APPLIED', 'CONTACTED', 'SCREENING', 'INTERVIEW', 'ASSIGNMENT', 'OFFER']
+  const pipelineData = pipelineOrder.map(status => ({
+    status,
+    count: data.statusCounts.find(s => s.status === status)?._count.status || 0
+  }))
+
+  return (
+    <div className="space-y-16 pb-20">
+      {/* Header */}
+      <header>
+        <h1 className="text-4xl font-light tracking-tight mb-2">Overview</h1>
+        <p className="text-zinc-400 text-sm">Where your job search stands right now.</p>
       </header>
 
-      {/* Hero Section */}
-      <main className="max-w-6xl mx-auto px-6 py-16 space-y-16">
-        <section className="text-center space-y-6 max-w-3xl mx-auto pt-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider">
-            <span className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dbStatus.connected ? 'bg-emerald-400' : 'bg-amber-400'} opacity-75`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${dbStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-            </span>
-            {dbStatus.connected ? "Prisma Database Connected" : "Prisma Schema Configured"}
-          </div>
+      {/* Metrics Row */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-x-12">
+        <MetricBlock label="Total Applied" value={data.totalApps} />
+        <MetricBlock label="Active" value={data.activeApps} />
+        <MetricBlock label="Interviews" value={data.interviews} />
+        <MetricBlock label="Offers" value={data.offers} />
+      </section>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Production-Ready <br />
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Prisma + Vercel Setup
-            </span>
-          </h1>
-
-          <p className="text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
-            Your full-stack job application platform is configured with Prisma ORM, PostgreSQL schema models (User, Company, Job, Application), singleton database connection, and Vercel build automation.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-            <a
-              href="/api/jobs"
-              target="_blank"
-              className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-white transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-2"
-            >
-              <span>Test API Endpoint</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </a>
-            <a
-              href="https://vercel.com/new"
-              target="_blank"
-              rel="noreferrer"
-              className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 font-semibold text-slate-200 border border-slate-800 transition-all"
-            >
-              Deploy to Vercel
-            </a>
-          </div>
-        </section>
-
-        {/* Database Status Card */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-3">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Database Status</div>
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${dbStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              <span className="text-xl font-bold text-white">
-                {dbStatus.connected ? "Connected" : "Pending Connection"}
-              </span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+        
+        {/* Left Column: Recent & Pipeline */}
+        <div className="lg:col-span-2 space-y-16">
+          
+          {/* Recent Applications */}
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-medium">Recent Applications</h2>
+              <Link href="/applications" className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors">
+                View all <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
-            <p className="text-sm text-slate-400">
-              {dbStatus.connected
-                ? `Prisma Client successfully queried ${dbStatus.count} job listings in PostgreSQL.`
-                : "Set DATABASE_URL in .env to connect your Prisma Postgres / PostgreSQL instance."}
-            </p>
-          </div>
-
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-3">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prisma ORM</div>
-            <div className="text-xl font-bold text-white flex items-center justify-between">
-              <span>Client v6.4.1</span>
-              <span className="text-xs px-2 py-1 bg-indigo-950 text-indigo-300 border border-indigo-800 rounded-md font-mono">
-                postgresql
-              </span>
+            
+            <div className="border border-zinc-900 rounded-lg overflow-hidden bg-zinc-950/30">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-zinc-900/50 text-zinc-500 text-xs uppercase tracking-wider font-medium">
+                  <tr>
+                    <th className="px-6 py-3 font-medium">Company</th>
+                    <th className="px-6 py-3 font-medium">Role</th>
+                    <th className="px-6 py-3 font-medium hidden sm:table-cell">Date</th>
+                    <th className="px-6 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-900/50">
+                  {data.recentApps.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-12 text-center text-zinc-500">
+                        No applications yet. Press N to add one.
+                      </td>
+                    </tr>
+                  ) : data.recentApps.map((app) => (
+                    <tr key={app.id} className="hover:bg-zinc-900/30 transition-colors group">
+                      <td className="px-6 py-4">
+                        <Link href={`/applications/${app.slug}`} className="font-medium text-zinc-200 group-hover:text-white transition-colors flex items-center gap-3">
+                          <CompanyLogo name={app.companyName} url={app.applicationUrl} />
+                          {app.companyName}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 text-zinc-400">{app.roleTitle}</td>
+                      <td className="px-6 py-4 text-zinc-500 hidden sm:table-cell">
+                        {app.dateApplied ? format(new Date(app.dateApplied), 'MMM d') : '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={app.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <p className="text-sm text-slate-400">
-              Singleton client configured in <code className="text-indigo-300 font-mono text-xs">lib/prisma.ts</code> for HMR safety.
-            </p>
-          </div>
+          </section>
 
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-3">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Vercel Build Integration</div>
-            <div className="text-xl font-bold text-white flex items-center justify-between">
-              <span>Postinstall Hook</span>
-              <span className="text-xs px-2 py-1 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded-md font-mono">
-                Automated
-              </span>
+          {/* Pipeline Summary */}
+          <section>
+            <h2 className="text-lg font-medium mb-6">Pipeline Summary</h2>
+            <div className="flex items-stretch justify-between gap-2">
+              {pipelineData.map((item, index) => (
+                <div key={item.status} className="flex-1 flex items-center">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-2xl font-light text-zinc-300">{item.count}</span>
+                    <span className="text-[10px] uppercase tracking-widest font-semibold text-zinc-500">
+                      {item.status}
+                    </span>
+                  </div>
+                  {index < pipelineData.length - 1 && (
+                    <ArrowRight className="w-4 h-4 text-zinc-800 mx-auto" />
+                  )}
+                </div>
+              ))}
             </div>
-            <p className="text-sm text-slate-400">
-              <code className="text-emerald-300 font-mono text-xs">prisma generate</code> runs automatically during Vercel deployment builds.
-            </p>
-          </div>
-        </section>
+          </section>
 
-        {/* Setup Steps & Commands */}
-        <section className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-8 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-white">Next Steps for Prisma & Vercel Hosting</h2>
-            <p className="text-slate-400">Follow these standard commands to sync your database and deploy live.</p>
+        </div>
+
+        {/* Right Column: Follow-ups */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium">Action Items</h2>
+            <Link href="/follow-ups" className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors">
+              Manage <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold text-indigo-400 flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 text-xs">1</span>
-                Connect Database & Push Schema
-              </h3>
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-2">
-                <p className="text-slate-500"># 1. Add your connection string in .env</p>
-                <p className="text-indigo-300">DATABASE_URL="postgresql://user:password@host:5432/db"</p>
-                <p className="text-slate-500 pt-2"># 2. Push schema models to database</p>
-                <p className="text-emerald-400">bunx prisma db push</p>
-                <p className="text-slate-500 pt-2"># 3. Launch database UI studio</p>
-                <p className="text-emerald-400">bunx prisma studio</p>
+          <div className="space-y-3">
+            {data.followUps.length === 0 ? (
+              <div className="p-6 border border-zinc-900 rounded-lg bg-zinc-950/30 text-center">
+                <p className="text-zinc-500 text-sm">You're all caught up. No follow-ups due.</p>
               </div>
-            </div>
+            ) : data.followUps.map(app => {
+              if (!app.nextFollowUpDate) return null
+              const date = new Date(app.nextFollowUpDate)
+              const isDueToday = isToday(date)
+              const isOverdue = isPast(date) && !isDueToday
 
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold text-indigo-400 flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 text-xs">2</span>
-                Deploy to Vercel
-              </h3>
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-2">
-                <p className="text-slate-500"># 1. Commit and push changes to GitHub</p>
-                <p className="text-emerald-400">git add . && git commit -m "Setup Prisma & Vercel setup"</p>
-                <p className="text-slate-500 pt-2"># 2. Import project into Vercel Dashboard</p>
-                <p className="text-indigo-300">Add DATABASE_URL to Vercel Environment Variables</p>
-                <p className="text-slate-500 pt-2"># 3. Build & Deploy happens automatically!</p>
-                <p className="text-emerald-400">vercel --prod</p>
-              </div>
-            </div>
+              return (
+                <div key={app.id} className="p-4 border border-zinc-900 rounded-lg hover:border-zinc-700 transition-colors bg-zinc-950/30 group">
+                  <div className="flex items-start justify-between mb-2">
+                    <Link href={`/applications/${app.slug}`} className="font-medium text-sm text-zinc-200 group-hover:text-white transition-colors">
+                      {app.companyName}
+                    </Link>
+                    <span className={cn(
+                      "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
+                      isOverdue ? "text-red-400 border-red-400/20 bg-red-400/10" :
+                      isDueToday ? "text-amber-400 border-amber-400/20 bg-amber-400/10" :
+                      "text-zinc-400 border-zinc-800 bg-zinc-900/50"
+                    )}>
+                      {isOverdue ? 'Overdue' : isDueToday ? 'Today' : format(date, 'MMM d')}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mb-3">{app.roleTitle}</p>
+                  
+                  <div className="flex items-center gap-2">
+                    <button className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors">
+                      <Clock className="w-3 h-3" /> Mark as done
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </section>
-      </main>
+        </div>
+      </div>
     </div>
-  );
+  )
+}
+
+function cn(...classes: (string | undefined | null | false)[]) {
+  return classes.filter(Boolean).join(' ')
 }
