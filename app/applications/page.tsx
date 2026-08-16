@@ -67,31 +67,31 @@ export default async function ApplicationsPage() {
           <input 
             type="text" 
             placeholder="Search company, role, or contact..." 
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-md py-2 pl-10 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
+            className="w-full bg-zinc-950/50 border border-zinc-900 rounded-lg py-2 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-700 focus:bg-black transition-colors"
           />
         </div>
-        <button className="flex items-center gap-2 border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-800 text-zinc-300 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+        <button className="flex items-center gap-2 border border-zinc-900 bg-zinc-950/30 hover:bg-zinc-900 text-zinc-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           <Filter className="w-4 h-4" /> Filter
         </button>
       </div>
 
       {/* Table */}
-      <div className="border border-zinc-800 rounded-lg overflow-hidden bg-black">
+      <div className="border border-zinc-900 rounded-lg overflow-hidden bg-zinc-950/30">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="bg-zinc-900/80 text-zinc-400 text-xs uppercase tracking-wider font-medium border-b border-zinc-800">
+            <thead className="bg-zinc-900/50 text-zinc-500 text-xs uppercase tracking-wider font-medium">
               <tr>
-                <th className="px-6 py-4 font-medium cursor-pointer hover:text-zinc-200 group">
+                <th className="px-6 py-3 font-medium cursor-pointer hover:text-zinc-300 group">
                   <div className="flex items-center gap-2">Company <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-100" /></div>
                 </th>
-                <th className="px-6 py-4 font-medium">Role</th>
-                <th className="px-6 py-4 font-medium cursor-pointer hover:text-zinc-200 group">
+                <th className="px-6 py-3 font-medium">Role</th>
+                <th className="px-6 py-3 font-medium cursor-pointer hover:text-zinc-300 group">
                   <div className="flex items-center gap-2">Applied <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-100" /></div>
                 </th>
-                <th className="px-6 py-4 font-medium">Type & Location</th>
-                <th className="px-6 py-4 font-medium">Contact</th>
-                <th className="px-6 py-4 font-medium">Follow-up</th>
-                <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Type & Location</th>
+                <th className="px-6 py-3 font-medium">Contact</th>
+                <th className="px-6 py-3 font-medium">Follow-up</th>
+                <th className="px-6 py-3 font-medium">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-900/50">
@@ -103,17 +103,17 @@ export default async function ApplicationsPage() {
                       {app.companyName}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 text-zinc-300 max-w-[200px] truncate">{app.roleTitle}</td>
+                  <td className="px-6 py-4 text-zinc-400 max-w-[200px] truncate">{app.roleTitle}</td>
                   <td className="px-6 py-4 text-zinc-500">
                     {app.dateApplied ? format(new Date(app.dateApplied), 'MMM d, yyyy') : '—'}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-1">
-                      <span className="text-zinc-300">{app.jobType.replace('_', ' ')}</span>
-                      <span className="text-xs text-zinc-500">{app.location || app.workplaceType}</span>
+                      <span className="text-zinc-400">{app.jobType.replace('_', ' ')}</span>
+                      <span className="text-xs text-zinc-600">{app.location || app.workplaceType}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-zinc-400">
+                  <td className="px-6 py-4 text-zinc-500">
                     {app.contactName || <span className="text-zinc-700">—</span>}
                   </td>
                   <td className="px-6 py-4">
@@ -129,7 +129,7 @@ export default async function ApplicationsPage() {
                   <td colSpan={7} className="px-6 py-16 text-center text-zinc-500">
                     <div className="flex flex-col items-center gap-2">
                       <p>No applications found.</p>
-                      <button className="text-zinc-300 hover:text-white transition-colors">Add your first application</button>
+                      <button className="text-zinc-400 hover:text-white transition-colors">Add your first application</button>
                     </div>
                   </td>
                 </tr>

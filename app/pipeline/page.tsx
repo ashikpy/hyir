@@ -57,7 +57,7 @@ export default async function PipelinePage() {
                   <Link 
                     key={app.id} 
                     href={`/applications/${app.slug}`}
-                    className="group bg-zinc-950 border border-zinc-900 hover:border-zinc-700 rounded-lg p-4 transition-all hover:-translate-y-0.5 shadow-sm hover:shadow-xl hover:shadow-black/50"
+                    className="group bg-zinc-950/30 border border-zinc-900 hover:border-zinc-700 rounded-lg p-4 transition-colors"
                   >
                     <div className="flex items-center gap-3 mb-4">
                       <CompanyLogo name={app.companyName} url={app.applicationUrl} className="w-8 h-8 rounded-md" />

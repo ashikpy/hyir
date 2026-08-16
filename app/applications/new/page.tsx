@@ -24,6 +24,8 @@ export default function NewApplicationPage() {
   const [applicationUrl, setApplicationUrl] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
 
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
   function handleUrlChange(url: string) {
     setApplicationUrl(url)
     if (!companyName && url) {
@@ -176,61 +178,75 @@ export default function NewApplicationPage() {
           </div>
         </div>
 
-        <hr className="border-zinc-900/50" />
-
-        {/* Details Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
-          <div className="flex flex-col gap-3">
-            <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Date Applied</label>
-            <input 
-              name="dateApplied"
-              type="date"
-              defaultValue={today}
-              className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-300 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
-            />
+        {!showAdvanced ? (
+          <div className="pt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(true)}
+              className="text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors border border-zinc-800/50 rounded-full px-4 py-1.5 bg-zinc-900/20"
+            >
+              + Add Optional Details
+            </button>
           </div>
+        ) : (
+          <div className="space-y-10 animate-fade-in pt-4">
+            <hr className="border-zinc-900/50" />
 
-          <div className="flex flex-col gap-3">
-            <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Location</label>
-            <input 
-              name="location"
-              type="text" 
-              placeholder="e.g. Remote (US)"
-              className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
-            />
+            {/* Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+              <div className="flex flex-col gap-3">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Date Applied</label>
+                <input 
+                  name="dateApplied"
+                  type="date"
+                  defaultValue={today}
+                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-300 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Location</label>
+                <input 
+                  name="location"
+                  type="text" 
+                  placeholder="e.g. Remote (US)"
+                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Target Salary</label>
+                <input 
+                  name="salary"
+                  type="text" 
+                  placeholder="e.g. $160k - $190k"
+                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Contact Name</label>
+                <input 
+                  name="contactName"
+                  type="text" 
+                  placeholder="e.g. Alex Morgan"
+                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="flex flex-col gap-3">
+              <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Notes & Strategy</label>
+              <textarea 
+                name="notes"
+                rows={5}
+                placeholder="Write down key talking points, interviewers, or thoughts..."
+                className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors resize-none leading-relaxed"
+              />
+            </div>
           </div>
-
-          <div className="flex flex-col gap-3">
-            <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Target Salary</label>
-            <input 
-              name="salary"
-              type="text" 
-              placeholder="e.g. $160k - $190k"
-              className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
-            />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Contact Name</label>
-            <input 
-              name="contactName"
-              type="text" 
-              placeholder="e.g. Alex Morgan"
-              className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="flex flex-col gap-3 pt-4">
-          <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Notes & Strategy</label>
-          <textarea 
-            name="notes"
-            rows={5}
-            placeholder="Write down key talking points, interviewers, or thoughts..."
-            className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors resize-none leading-relaxed"
-          />
-        </div>
+        )}
         
         {/* Hidden keyboard hint */}
         <div className="text-center pt-8">
