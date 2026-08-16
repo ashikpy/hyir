@@ -29,6 +29,9 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
+  "prisma": {
+    "seed": "bun run prisma/seed.ts"
+  },
   "packageManager": "bun@1.3.4",
   "ignoreScripts": [
     "sharp",
