@@ -26,7 +26,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+    >
       <body className="h-full bg-black text-zinc-50 flex">
         {/* Left Sidebar */}
         <aside className="w-64 border-r border-zinc-900 bg-black p-6 flex flex-col h-full sticky top-0">
@@ -35,15 +38,15 @@ export default function RootLayout({
             <AddApplicationButton className="flex items-center justify-center w-full py-2 px-3 bg-zinc-900 hover:bg-zinc-800 text-sm font-medium rounded-md transition-colors text-zinc-300">
               <span className="mr-2">+</span> Add Application
             </AddApplicationButton>
-            <p className="text-xs text-zinc-600 mt-4 text-center">Press N for new application</p>
+            <p className="text-xs text-zinc-600 mt-4 text-center">
+              Press N for new application
+            </p>
           </div>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col min-h-full overflow-y-auto">
-          <div className="max-w-6xl w-full mx-auto p-12">
-            {children}
-          </div>
+          <div className="max-w-6xl w-full mx-auto p-12">{children}</div>
         </main>
         <GlobalHotkeys />
       </body>
