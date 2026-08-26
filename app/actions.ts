@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { ApplicationStatus } from '@prisma/client'
+import { ApplicationStatus, TimelineEventType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
 export async function createApplication(formData: FormData) {
@@ -102,6 +102,55 @@ export async function updateApplication(id: string, formData: FormData) {
   revalidatePath(`/applications/${slug}`)
   
   return updated.slug
+}
+
+export async function updateApplicationStatus(id: string, status: ApplicationStatus) {
+  await prisma.application.update({
+    where: { id },
+    data: { status }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/applications')
+  revalidatePath('/pipeline')
+  revalidatePath('/follow-ups')
+}
+
+export async function addTimelineEvent(applicationId: string, formData: FormData) {
+  const eventType = formData.get('eventType') as TimelineEventType
+  const date = formData.get('date') as string
+  const description = formData.get('description') as string
+
+  await prisma.timelineEvent.create({
+    data: {
+      applicationId,
+      eventType: eventType || 'CUSTOM',
+      date: date ? new Date(date) : new Date(),
+      description: description || null,
+    }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/applications')
+  revalidatePath('/pipeline')
+  revalidatePath('/follow-ups')
+}
+
+export async function updateDocuments(applicationId: string, formData: FormData) {
+  const resumeVersion = formData.get('resumeVersion') as string
+  const portfolioVersion = formData.get('portfolioVersion') as string
+
+  await prisma.application.update({
+    where: { id: applicationId },
+    data: {
+      resumeVersion: resumeVersion || null,
+      portfolioVersion: portfolioVersion || null,
+    }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/applications')
+  revalidatePath('/pipeline')
 }
 
 export async function deleteApplication(id: string) {
