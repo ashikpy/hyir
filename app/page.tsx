@@ -109,19 +109,54 @@ export default async function Dashboard() {
       data.statusCounts.find((s) => s.status === status)?._count.status || 0,
   }));
 
+  // State detection:
+  // 1. Urgent: Overdue follow-up tasks
+  // 2. Good News: Active job offers / accepted positions
+  // 3. Calm: Standard neutral dashboard
+  const hasOverdue = data.followUps.some((app) => {
+    if (!app.nextFollowUpDate) return false;
+    const date = new Date(app.nextFollowUpDate);
+    return isPast(date) && !isToday(date);
+  });
+  const hasGoodNews = data.offers > 0;
+
+  const rayConfig = hasOverdue
+    ? {
+        rayColor1: "#ffecb0",
+        rayColor2: "#ff8a8a",
+        saturation: 0.6,
+        speed: 2.4,
+        intensity: 2.6,
+      }
+    : hasGoodNews
+      ? {
+          rayColor1: "#38bdf8",
+          rayColor2: "#818cf8",
+          saturation: 0.9,
+          speed: 2.5,
+          intensity: 2.7,
+        }
+      : {
+          rayColor1: "#EAB308",
+          rayColor2: "#96c8ff",
+          saturation: 0,
+          speed: 2.3,
+          intensity: 2.6,
+        };
+
   return (
     <div className="relative space-y-16 pb-20">
-      {/* SideRays Light Accent in Top Right */}
+      {/* SideRays: Dynamic ambient lighting (Red for urgent, Blue for good news, Monochrome for calm) */}
       <div className="absolute -top-12 -right-12 w-full max-w-[1100px] h-[650px] pointer-events-none overflow-hidden z-0 opacity-85">
         <SideRays
-          rayColor1="#EAB308"
-          rayColor2="#96c8ff"
+          rayColor1={rayConfig.rayColor1}
+          rayColor2={rayConfig.rayColor2}
           origin="top-right"
-          speed={2.3}
-          intensity={2.6}
+          speed={rayConfig.speed}
+          intensity={rayConfig.intensity}
           spread={0.1}
           tilt={0}
-          saturation={0}
+          saturation={rayConfig.saturation}
           blend={0.67}
           falloff={0.85}
           opacity={0.8}
