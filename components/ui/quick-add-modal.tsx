@@ -92,8 +92,8 @@ export function QuickAddModal() {
           {/* Primary Details */}
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-zinc-500" /> Company *
+              <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-zinc-500" /> Company Name <span className="text-red-400">*</span>
               </label>
               <input 
                 autoFocus
@@ -101,43 +101,43 @@ export function QuickAddModal() {
                 required
                 type="text" 
                 placeholder="e.g. Stripe, Linear, Vercel" 
-                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
               />
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-zinc-500" /> Role *
+              <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-zinc-500" /> Role Title <span className="text-red-400">*</span>
               </label>
               <RoleInput 
                 name="roleTitle"
                 required
                 placeholder="e.g. Product Designer, Founding Designer..." 
-                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 pl-8 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 pl-8 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <label className="text-xs uppercase tracking-wider font-semibold text-zinc-400">Status</label>
-                <select name="status" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all">
-                  <option value="SAVED">Saved</option>
+                <label className="text-xs font-medium text-zinc-300">Status</label>
+                <select name="status" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500 transition-all cursor-pointer">
                   <option value="APPLIED">Applied</option>
                   <option value="CONTACTED">Contacted</option>
-                  <option value="SCREENING">Screening</option>
-                  <option value="INTERVIEW">Interviewing</option>
-                  <option value="ASSIGNMENT">Assignment</option>
+                  <option value="INTERVIEW">Interview</option>
                   <option value="OFFER">Offer</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="GHOSTED">Ghosted</option>
+                  <option value="SAVED">Draft</option>
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1.5">
+                <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-zinc-500" /> Date Applied
                 </label>
                 <input 
                   name="dateApplied"
                   type="date" 
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-300 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-300 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>
             </div>
@@ -145,41 +145,40 @@ export function QuickAddModal() {
 
           {/* Links & Compensation */}
           <div className="pt-4 border-t border-zinc-900 space-y-4">
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Details & Links</h3>
+            <h3 className="text-xs font-semibold text-zinc-400">Details & Links</h3>
             
             <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-wider font-medium text-zinc-400 flex items-center gap-1.5">
-                <LinkIcon className="w-3.5 h-3.5 text-zinc-500" /> Career / Job Post URL
+              <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                <LinkIcon className="w-3.5 h-3.5 text-zinc-500" /> Job Post URL
               </label>
               <input 
                 name="applicationUrl"
                 type="url" 
                 placeholder="https://company.com/careers/job-id" 
-                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
               />
-              <p className="text-[11px] text-zinc-500">Adds the company logo automatically from the domain.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <label className="text-xs uppercase tracking-wider font-medium text-zinc-400 flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-zinc-500" /> Salary
+                <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-zinc-500" /> Target Salary
                 </label>
                 <input 
                   name="salary"
                   type="text" 
-                  placeholder="$140k - $170k" 
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                  placeholder="e.g. $140k - $170k" 
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs uppercase tracking-wider font-medium text-zinc-400 flex items-center gap-1.5">
+                <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-zinc-500" /> Location
                 </label>
                 <LocationInput 
                   name="location"
                   placeholder="Remote / SF / Bangalore" 
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 pl-8 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 pl-8 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>
             </div>
@@ -187,7 +186,7 @@ export function QuickAddModal() {
 
           {/* Recruiter / Contact */}
           <div className="pt-4 border-t border-zinc-900 space-y-4">
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Recruiter / Contact</h3>
+            <h3 className="text-xs font-semibold text-zinc-400">Recruiter / Contact</h3>
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
                 <label className="text-xs text-zinc-400">Name</label>
@@ -195,7 +194,7 @@ export function QuickAddModal() {
                   name="contactName"
                   type="text" 
                   placeholder="Sarah Jenkins" 
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>
               <div className="space-y-1.5">
@@ -204,7 +203,7 @@ export function QuickAddModal() {
                   name="contactEmail"
                   type="text" 
                   placeholder="sarah@company.com" 
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>
             </div>
@@ -212,7 +211,7 @@ export function QuickAddModal() {
 
           {/* Notes */}
           <div className="pt-4 border-t border-zinc-900 space-y-2">
-            <label className="text-xs uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1.5">
+            <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-zinc-500" /> Initial Notes
             </label>
             <textarea 

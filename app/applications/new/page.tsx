@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Sparkles,
   Briefcase,
   MapPin,
   Building2,
@@ -96,7 +95,7 @@ export function StatusPill({ status }: { status: string }) {
   }
   const config = statusConfig[status] || statusConfig.SAVED
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold px-3 py-1 border rounded-full ${config.bg} ${config.text} ${config.border}`}>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 border rounded-full ${config.bg} ${config.text} ${config.border}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {status.replace('_', ' ')}
     </span>
@@ -256,12 +255,12 @@ export default function NewApplicationPage() {
 
           <div className="space-y-7">
             {/* 1. Job Link (Mandatory) */}
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                <label className="block text-xs font-medium text-zinc-300">
                   Job Post / Career Link <span className="text-red-400">*</span>
                 </label>
-                <span className="text-[11px] text-zinc-500">Mandatory</span>
+                <span className="text-xs text-zinc-500">Mandatory</span>
               </div>
               <div className="relative group">
                 <input 
@@ -271,7 +270,7 @@ export default function NewApplicationPage() {
                   value={applicationUrl}
                   onChange={(e) => handleUrlChange(e.target.value)}
                   placeholder="https://company.com/careers/role or job post link"
-                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 pl-4 pr-12 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 pl-4 pr-12 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                 />
                 <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
                   {applicationUrl ? (
@@ -285,8 +284,8 @@ export default function NewApplicationPage() {
 
             {/* 2. Company & Role */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="flex flex-col gap-2.5">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+              <div className="flex flex-col gap-2">
+                <label className="block text-xs font-medium text-zinc-300">
                   Company Name <span className="text-red-400">*</span>
                 </label>
                 <input 
@@ -303,8 +302,8 @@ export default function NewApplicationPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-2.5">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+              <div className="flex flex-col gap-2">
+                <label className="block text-xs font-medium text-zinc-300">
                   Role Title <span className="text-red-400">*</span>
                 </label>
                 <RoleInput 
@@ -322,8 +321,8 @@ export default function NewApplicationPage() {
             </div>
 
             {/* 3. Status Selector */}
-            <div className="flex flex-col gap-3 pt-2">
-              <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+            <div className="flex flex-col gap-2.5 pt-1">
+              <label className="block text-xs font-medium text-zinc-300">
                 Current Status
               </label>
               <div className="flex flex-wrap gap-2.5">
@@ -406,8 +405,8 @@ export default function NewApplicationPage() {
             {/* Mandatory Job Type, Workplace & Location */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Job Type (Mandatory) */}
-              <div className="flex flex-col gap-2.5">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+              <div className="flex flex-col gap-2">
+                <label className="block text-xs font-medium text-zinc-300">
                   Job Type <span className="text-red-400">*</span>
                 </label>
                 <select
@@ -424,8 +423,8 @@ export default function NewApplicationPage() {
               </div>
 
               {/* Workplace Type (Mandatory) */}
-              <div className="flex flex-col gap-2.5">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+              <div className="flex flex-col gap-2">
+                <label className="block text-xs font-medium text-zinc-300">
                   Workplace Type <span className="text-red-400">*</span>
                 </label>
                 <select
@@ -442,8 +441,8 @@ export default function NewApplicationPage() {
               </div>
 
               {/* Location (Mandatory) */}
-              <div className="flex flex-col gap-2.5">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+              <div className="flex flex-col gap-2">
+                <label className="block text-xs font-medium text-zinc-300">
                   Location <span className="text-red-400">*</span>
                 </label>
                 <LocationInput 
@@ -455,8 +454,8 @@ export default function NewApplicationPage() {
               </div>
 
               {/* Date Applied (Mandatory) */}
-              <div className="flex flex-col gap-2.5">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+              <div className="flex flex-col gap-2">
+                <label className="block text-xs font-medium text-zinc-300">
                   Date Applied <span className="text-red-400">*</span>
                 </label>
                 <input 
@@ -475,7 +474,7 @@ export default function NewApplicationPage() {
               <button
                 type="button"
                 onClick={() => setShowMoreOptional(!showMoreOptional)}
-                className="w-full flex items-center justify-between p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 hover:bg-zinc-900/50 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="w-full flex items-center justify-between p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 hover:bg-zinc-900/50 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
               >
                 <span>Optional Details (Salary, Contact Recruiter, Notes)</span>
                 {showMoreOptional ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -485,8 +484,8 @@ export default function NewApplicationPage() {
                 <div className="pt-6 space-y-6 animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Target Salary (Optional) */}
-                    <div className="flex flex-col gap-2.5">
-                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                    <div className="flex flex-col gap-2">
+                      <label className="block text-xs font-medium text-zinc-400">
                         Target Salary (Optional)
                       </label>
                       <input 
@@ -498,21 +497,21 @@ export default function NewApplicationPage() {
                     </div>
 
                     {/* Job Description URL (Optional) */}
-                    <div className="flex flex-col gap-2.5">
-                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                    <div className="flex flex-col gap-2">
+                      <label className="block text-xs font-medium text-zinc-400">
                         Job Description Link (Optional)
                       </label>
                       <input 
                         name="jobDescriptionUrl"
                         type="url" 
                         placeholder="https://..."
-                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
+                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                       />
                     </div>
 
                     {/* Contact Name (Optional) */}
-                    <div className="flex flex-col gap-2.5">
-                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                    <div className="flex flex-col gap-2">
+                      <label className="block text-xs font-medium text-zinc-400">
                         Contact / Recruiter Name (Optional)
                       </label>
                       <input 
@@ -524,22 +523,22 @@ export default function NewApplicationPage() {
                     </div>
 
                     {/* Contact Email (Optional) */}
-                    <div className="flex flex-col gap-2.5">
-                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                    <div className="flex flex-col gap-2">
+                      <label className="block text-xs font-medium text-zinc-400">
                         Contact Email (Optional)
                       </label>
                       <input 
                         name="contactEmail"
                         type="email" 
                         placeholder="e.g. sarah@company.com"
-                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
+                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                       />
                     </div>
                   </div>
 
                   {/* Notes & Strategy (Optional) */}
-                  <div className="flex flex-col gap-2.5">
-                    <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                  <div className="flex flex-col gap-2">
+                    <label className="block text-xs font-medium text-zinc-400">
                       Notes & Interview Strategy (Optional)
                     </label>
                     <textarea 
@@ -578,8 +577,8 @@ export default function NewApplicationPage() {
 
       {/* Keyboard Shortcut Hint */}
       <div className="text-center pt-10">
-        <span className="text-[11px] text-zinc-600 font-mono tracking-wider">
-          Press <kbd className="px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-400 mx-1">⌘ + ↵</kbd> {step === 1 ? 'to continue' : 'to save'}
+        <span className="text-xs text-zinc-600">
+          Press <kbd className="px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-400 mx-1 font-mono">⌘ + ↵</kbd> {step === 1 ? 'to continue' : 'to save'}
         </span>
       </div>
     </div>
