@@ -253,13 +253,23 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
           </button>
         </div>
 
-        {/* In ACTIVE mode: Applied Queue toggle indicator */}
+        {/* In ACTIVE mode: Applied Queue toggle indicator / Drop Target */}
         {viewMode === 'ACTIVE' && (
           <button
             type="button"
             onClick={() => setIsAppliedDrawerOpen(!isAppliedDrawerOpen)}
+            onDragOver={(e) => {
+              e.preventDefault()
+              if (!isAppliedDrawerOpen) setIsAppliedDrawerOpen(true)
+              handleDragOver(e, 'APPLIED')
+            }}
+            onDragEnter={(e) => handleDragOver(e, 'APPLIED')}
+            onDragLeave={(e) => handleDragLeave(e, 'APPLIED')}
+            onDrop={(e) => handleDrop(e, 'APPLIED')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
-              isAppliedDrawerOpen
+              activeDropColumn === 'APPLIED'
+                ? 'border-blue-500 bg-blue-950/40 text-blue-200 ring-2 ring-blue-500/40'
+                : isAppliedDrawerOpen
                 ? 'border-blue-500/40 bg-blue-950/20 text-blue-300'
                 : 'border-zinc-800 bg-zinc-950/60 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200'
             }`}
@@ -275,7 +285,17 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
       <div className="flex gap-4 flex-1 min-h-0 items-start overflow-hidden">
         {/* ================= LEFT APPLIED QUEUE DRAWER (In ACTIVE mode) ================= */}
         {viewMode === 'ACTIVE' && isAppliedDrawerOpen && (
-          <div className="w-[300px] shrink-0 rounded-2xl bg-zinc-950/60 border border-zinc-900 p-3 flex flex-col h-[calc(100vh-250px)] animate-in fade-in slide-in-from-left-4 duration-150">
+          <div
+            onDragOver={(e) => handleDragOver(e, 'APPLIED')}
+            onDragEnter={(e) => handleDragOver(e, 'APPLIED')}
+            onDragLeave={(e) => handleDragLeave(e, 'APPLIED')}
+            onDrop={(e) => handleDrop(e, 'APPLIED')}
+            className={`w-[300px] shrink-0 rounded-2xl bg-zinc-950/60 border p-3 flex flex-col h-[calc(100vh-250px)] animate-in fade-in slide-in-from-left-4 duration-150 transition-all ${
+              activeDropColumn === 'APPLIED'
+                ? 'border-blue-500/60 bg-blue-950/20 ring-2 ring-blue-500/30'
+                : 'border-zinc-900'
+            }`}
+          >
             {/* Drawer Header */}
             <div className="flex items-center justify-between mb-2 px-1">
               <div className="flex items-center gap-2">
