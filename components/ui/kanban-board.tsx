@@ -44,7 +44,6 @@ interface StageConfig {
 
 const PIPELINE_STAGES: StageConfig[] = [
   { status: 'CONTACTED', label: 'Contacted', countColor: 'text-purple-400' },
-  { status: 'SCREENING', label: 'Screening', countColor: 'text-amber-400' },
   { status: 'INTERVIEW', label: 'Interview', countColor: 'text-orange-400' },
   { status: 'OFFER', label: 'Offer', countColor: 'text-emerald-400' },
   { status: 'REJECTED', label: 'Rejected', countColor: 'text-red-400' },
@@ -77,7 +76,9 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
     }
 
     applications.forEach((app) => {
-      if (map[app.status]) {
+      if (app.status === 'SCREENING' || app.status === 'ASSIGNMENT') {
+        map.INTERVIEW.push(app)
+      } else if (map[app.status]) {
         map[app.status].push(app)
       } else {
         map.SAVED.push(app)
