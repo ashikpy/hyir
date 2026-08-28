@@ -222,36 +222,6 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Top Health & Summary Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-zinc-950/60 border border-zinc-900">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 font-mono text-xs font-semibold">
-            {triageItems.length}
-          </div>
-          <div>
-            <div className="text-sm font-medium text-zinc-200">
-              {triageItems.length === 0
-                ? 'All applications complete'
-                : `${triageItems.length} applications with missing fields`}
-            </div>
-            <div className="text-xs text-zinc-500">
-              {completedCount} of {totalApps} applications 100% complete
-            </div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="flex items-center gap-3 min-w-[200px]">
-          <div className="flex-1 bg-zinc-900 h-1.5 rounded-full overflow-hidden">
-            <div
-              className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-              style={{ width: `${completenessPercent}%` }}
-            />
-          </div>
-          <span className="text-xs font-mono text-zinc-400 font-medium">{completenessPercent}%</span>
-        </div>
-      </div>
-
       {/* Filter Tabs & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
