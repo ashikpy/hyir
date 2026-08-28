@@ -42,9 +42,9 @@ function JobTypeBadge({ type }: { type: string }) {
     return (
       <div 
         title="Internship" 
-        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-950/40 text-indigo-300 border border-indigo-500/20 shadow-xs"
+        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-900 text-zinc-300 border border-zinc-800 shadow-xs hover:border-zinc-700 transition-colors"
       >
-        <InternshipIcon className="w-4 h-4" />
+        <InternshipIcon className="w-4 h-4 text-zinc-400" />
       </div>
     )
   }
@@ -53,9 +53,9 @@ function JobTypeBadge({ type }: { type: string }) {
     return (
       <div 
         title={type.replace('_', ' ')} 
-        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-950/40 text-amber-300 border border-amber-500/20 shadow-xs"
+        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-900 text-zinc-300 border border-zinc-800 shadow-xs hover:border-zinc-700 transition-colors"
       >
-        <FileCode2 className="w-3.5 h-3.5" />
+        <FileCode2 className="w-3.5 h-3.5 text-zinc-400" />
       </div>
     )
   }
@@ -64,7 +64,7 @@ function JobTypeBadge({ type }: { type: string }) {
   return (
     <div 
       title="Full Time Job" 
-      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-900 text-zinc-300 border border-zinc-800 shadow-xs"
+      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-900 text-zinc-300 border border-zinc-800 shadow-xs hover:border-zinc-700 transition-colors"
     >
       <Briefcase className="w-3.5 h-3.5 text-zinc-400" />
     </div>
