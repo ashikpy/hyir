@@ -191,8 +191,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       <div className="p-6 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-light tracking-tight text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-400" />
+            <h2 className="text-xl font-light tracking-tight text-white">
               Pipeline Health Score
             </h2>
             <p className="text-xs text-zinc-400 mt-1">

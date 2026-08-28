@@ -437,5 +437,46 @@ export async function getSearchApplications() {
   return applications
 }
 
+export async function getTriageCount(): Promise<number> {
+  const apps = await prisma.application.findMany({
+    select: {
+      status: true,
+      applicationUrl: true,
+      salary: true,
+      contactName: true,
+      notes: true,
+      nextFollowUpDate: true,
+    }
+  })
+
+  let count = 0
+  const now = new Date()
+
+  for (const app of apps) {
+    const isDraft = (app.status as ApplicationStatus) === ApplicationStatus.SAVED
+    const isOverdue =
+      app.nextFollowUpDate &&
+      new Date(app.nextFollowUpDate) < now &&
+      app.status !== ApplicationStatus.REJECTED &&
+      app.status !== ApplicationStatus.GHOSTED
+
+    const hasIssue =
+      isDraft ||
+      !app.applicationUrl ||
+      isOverdue ||
+      (!app.contactName && !isDraft) ||
+      !app.salary ||
+      (app.status === ApplicationStatus.INTERVIEW && !app.nextFollowUpDate) ||
+      !app.notes ||
+      app.notes.trim() === ''
+
+    if (hasIssue) {
+      count++
+    }
+  }
+
+  return count
+}
+
 
 

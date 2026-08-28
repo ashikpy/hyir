@@ -1,17 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ArrowUpDown, Search } from 'lucide-react'
 import { ImportExportModal } from './import-export-modal'
 import { HyrLogo } from './hyr-logo'
+import { getTriageCount } from '@/app/actions'
 
 const items = [
   { name: 'Dashboard', href: '/' },
   { name: 'Applications', href: '/applications' },
-  { name: 'Triage', href: '/triage' },
+  { name: 'Triage', href: '/triage', hasNotification: true },
   { name: 'Pipeline', href: '/pipeline' },
   { name: 'Follow-ups', href: '/follow-ups' },
   { name: 'Analytics', href: '/analytics' },
@@ -20,6 +21,20 @@ const items = [
 export function Nav() {
   const pathname = usePathname()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [triageCount, setTriageCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    getTriageCount()
+      .then((count) => {
+        if (isMounted) setTriageCount(count)
+      })
+      .catch(() => {})
+
+    return () => {
+      isMounted = false
+    }
+  }, [pathname])
 
   function openSearch() {
     window.dispatchEvent(new CustomEvent('open-command-palette'))
@@ -38,7 +53,7 @@ export function Nav() {
         <button
           type="button"
           onClick={openSearch}
-          className="flex items-center justify-between px-3 py-2 mb-4 text-xs font-medium rounded-lg text-zinc-400 bg-zinc-900/60 hover:bg-zinc-900 hover:text-zinc-200 border border-zinc-800 transition-colors text-left group"
+          className="flex items-center justify-between px-3 py-2 mb-4 text-xs font-medium rounded-lg text-zinc-400 bg-zinc-900/60 hover:bg-zinc-900 hover:text-zinc-200 border border-zinc-800 transition-colors text-left group cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <Search className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300" />
@@ -50,18 +65,25 @@ export function Nav() {
         </button>
         {items.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href))
+          const showTriageBadge = item.hasNotification && triageCount !== null && triageCount > 0
+
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-between',
                 isActive
                   ? 'bg-zinc-900 text-zinc-50'
                   : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900/50'
               )}
             >
-              {item.name}
+              <span>{item.name}</span>
+              {showTriageBadge && (
+                <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {triageCount}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -70,7 +92,7 @@ export function Nav() {
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50 transition-colors text-left"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50 transition-colors text-left cursor-pointer"
           >
             <ArrowUpDown className="w-4 h-4 text-zinc-500" />
             <span>Import / Export</span>
@@ -87,4 +109,3 @@ export function Nav() {
     </>
   )
 }
-
