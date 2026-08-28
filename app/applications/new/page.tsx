@@ -26,11 +26,41 @@ import { LocationInput } from '@/components/ui/location-input'
 import { RoleInput } from '@/components/ui/role-input'
 
 const STATUS_OPTIONS = [
-  { value: 'APPLIED', label: 'Applied' },
-  { value: 'SAVED', label: 'Draft' },
-  { value: 'SCREENING', label: 'Screening' },
-  { value: 'INTERVIEW', label: 'Interview' },
-  { value: 'OFFER', label: 'Offer' },
+  {
+    value: 'APPLIED',
+    label: 'Applied',
+    activeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/60 ring-1 ring-blue-500/30',
+    idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-blue-500/40 hover:text-blue-300',
+    dotColor: 'bg-blue-400',
+  },
+  {
+    value: 'SAVED',
+    label: 'Draft',
+    activeClass: 'bg-zinc-800 text-zinc-200 border-zinc-600 ring-1 ring-zinc-500/30',
+    idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300',
+    dotColor: 'bg-zinc-400',
+  },
+  {
+    value: 'CONTACTED',
+    label: 'Contacted',
+    activeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/60 ring-1 ring-purple-500/30',
+    idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-purple-500/40 hover:text-purple-300',
+    dotColor: 'bg-purple-400',
+  },
+  {
+    value: 'INTERVIEW',
+    label: 'Interview',
+    activeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/60 ring-1 ring-orange-500/30',
+    idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-orange-500/40 hover:text-orange-300',
+    dotColor: 'bg-orange-400',
+  },
+  {
+    value: 'OFFER',
+    label: 'Offer',
+    activeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 ring-1 ring-emerald-500/30',
+    idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-emerald-500/40 hover:text-emerald-300',
+    dotColor: 'bg-emerald-400',
+  },
 ]
 
 const JOB_TYPE_OPTIONS = [
@@ -48,16 +78,19 @@ const WORKPLACE_OPTIONS = [
 ]
 
 export function StatusPill({ status }: { status: string }) {
-  const statusConfig: Record<string, string> = {
-    SAVED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
-    APPLIED: 'text-blue-400 border-blue-400/20 bg-blue-950/40',
-    SCREENING: 'text-amber-400 border-amber-400/20 bg-amber-950/40',
-    INTERVIEW: 'text-orange-400 border-orange-400/20 bg-orange-950/40',
-    OFFER: 'text-emerald-400 border-emerald-400/20 bg-emerald-950/40',
+  const statusConfig: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+    SAVED: { bg: 'bg-zinc-900', text: 'text-zinc-300', border: 'border-zinc-800', dot: 'bg-zinc-400' },
+    APPLIED: { bg: 'bg-blue-950/50', text: 'text-blue-300', border: 'border-blue-500/30', dot: 'bg-blue-400' },
+    CONTACTED: { bg: 'bg-purple-950/50', text: 'text-purple-300', border: 'border-purple-500/30', dot: 'bg-purple-400' },
+    INTERVIEW: { bg: 'bg-orange-950/50', text: 'text-orange-300', border: 'border-orange-500/30', dot: 'bg-orange-400' },
+    OFFER: { bg: 'bg-emerald-950/50', text: 'text-emerald-300', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
+    REJECTED: { bg: 'bg-red-950/50', text: 'text-red-300', border: 'border-red-500/30', dot: 'bg-red-400' },
+    GHOSTED: { bg: 'bg-zinc-900/80', text: 'text-zinc-400', border: 'border-zinc-800', dot: 'bg-zinc-500' },
   }
   const config = statusConfig[status] || statusConfig.SAVED
   return (
-    <span className={`text-[11px] uppercase tracking-wider font-semibold px-3 py-1 border rounded-full ${config}`}>
+    <span className={`inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold px-3 py-1 border rounded-full ${config.bg} ${config.text} ${config.border}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {status.replace('_', ' ')}
     </span>
   )
@@ -287,21 +320,27 @@ export default function NewApplicationPage() {
                 Current Status
               </label>
               <div className="flex flex-wrap gap-2.5">
-                {STATUS_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setStatus(opt.value)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors border cursor-pointer ${
-                      status === opt.value 
-                        ? 'bg-zinc-100 text-black border-zinc-100 shadow-sm' 
-                        : 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
-                    }`}
-                  >
-                    {status === opt.value && <Check className="w-3.5 h-3.5" />}
-                    {opt.label}
-                  </button>
-                ))}
+                {STATUS_OPTIONS.map((opt) => {
+                  const isSelected = status === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setStatus(opt.value)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                        isSelected ? opt.activeClass : opt.idleClass
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${opt.dotColor} ${
+                          isSelected ? 'animate-pulse' : 'opacity-60'
+                        }`}
+                      />
+                      <span>{opt.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 ml-0.5 opacity-90" />}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
