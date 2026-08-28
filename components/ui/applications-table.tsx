@@ -217,7 +217,6 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-zinc-900/60 text-zinc-500 text-[11px] uppercase tracking-wider font-semibold border-b border-zinc-900">
               <tr>
-                <th className="px-4 py-3.5 text-center w-12">Type</th>
                 <th
                   onClick={() => toggleSort('company')}
                   className="px-5 py-3.5 cursor-pointer hover:text-zinc-300 group select-none"
@@ -227,6 +226,7 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                     <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </th>
+                <th className="px-5 py-3.5 text-center">Type</th>
                 <th className="px-5 py-3.5">Status</th>
                 <th className="px-5 py-3.5">Location</th>
                 <th className="px-5 py-3.5">Contact</th>
@@ -245,12 +245,7 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
             <tbody className="divide-y divide-zinc-900/60">
               {filteredApplications.map((app) => (
                 <tr key={app.id} className="hover:bg-zinc-900/30 transition-colors group">
-                  {/* 1. Type (Icon Badge) */}
-                  <td className="px-4 py-3.5 text-center w-12">
-                    <JobTypeBadge type={app.jobType} />
-                  </td>
-
-                  {/* 2. Company & Role */}
+                  {/* 1. Company */}
                   <td className="px-5 py-3.5">
                     <Link
                       href={`/applications/${app.slug}`}
@@ -266,6 +261,11 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                         </span>
                       </div>
                     </Link>
+                  </td>
+
+                  {/* 2. Type (Icon Badge) */}
+                  <td className="px-5 py-3.5 text-center">
+                    <JobTypeBadge type={app.jobType} />
                   </td>
 
                   {/* 3. Status */}
