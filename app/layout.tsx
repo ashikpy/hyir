@@ -4,6 +4,7 @@ import "./globals.css";
 import { Nav } from "@/components/ui/nav";
 import { AddApplicationButton } from "@/components/ui/add-app-button";
 import { GlobalHotkeys } from "@/components/ui/global-hotkeys";
+import { CommandPalette } from "@/components/ui/command-palette";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Job Application Tracker",
-  description: "Personal job search command center",
+  title: "Hyr · Job Application Command Center",
+  description: "Personal job application tracking and pipeline command center",
 };
 
 export default function RootLayout({
@@ -49,6 +50,7 @@ export default function RootLayout({
           <div className="max-w-6xl w-full mx-auto p-12">{children}</div>
         </main>
         <GlobalHotkeys />
+        <CommandPalette />
       </body>
     </html>
   );

@@ -3,9 +3,27 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Check, Sparkles } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Sparkles,
+  Briefcase,
+  MapPin,
+  Building2,
+  DollarSign,
+  Calendar,
+  User,
+  Mail,
+  FileText,
+  Link as LinkIcon,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react'
 import { createApplication } from '@/app/actions'
 import { CompanyLogo } from '@/components/ui/avatars'
+import { LocationInput } from '@/components/ui/location-input'
+import { RoleInput } from '@/components/ui/role-input'
 
 const STATUS_OPTIONS = [
   { value: 'APPLIED', label: 'Applied' },
@@ -15,19 +33,62 @@ const STATUS_OPTIONS = [
   { value: 'OFFER', label: 'Offer' },
 ]
 
+const JOB_TYPE_OPTIONS = [
+  { value: 'FULL_TIME', label: 'Full Time' },
+  { value: 'INTERNSHIP', label: 'Internship' },
+  { value: 'CONTRACT', label: 'Contract' },
+  { value: 'FREELANCE', label: 'Freelance' },
+  { value: 'PART_TIME', label: 'Part Time' },
+]
+
+const WORKPLACE_OPTIONS = [
+  { value: 'REMOTE', label: 'Remote' },
+  { value: 'HYBRID', label: 'Hybrid' },
+  { value: 'ONSITE', label: 'Onsite' },
+]
+
+export function StatusPill({ status }: { status: string }) {
+  const statusConfig: Record<string, string> = {
+    SAVED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
+    APPLIED: 'text-blue-400 border-blue-400/20 bg-blue-950/40',
+    SCREENING: 'text-amber-400 border-amber-400/20 bg-amber-950/40',
+    INTERVIEW: 'text-orange-400 border-orange-400/20 bg-orange-950/40',
+    OFFER: 'text-emerald-400 border-emerald-400/20 bg-emerald-950/40',
+  }
+  const config = statusConfig[status] || statusConfig.SAVED
+  return (
+    <span className={`text-[11px] uppercase tracking-wider font-semibold px-3 py-1 border rounded-full ${config}`}>
+      {status.replace('_', ' ')}
+    </span>
+  )
+}
+
 export default function NewApplicationPage() {
   const router = useRouter()
+  const [step, setStep] = useState<1 | 2>(1)
   const [isPending, setIsPending] = useState(false)
-  const [status, setStatus] = useState('APPLIED')
+
+  // Step 1 State
+  const [applicationUrl, setApplicationUrl] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [roleTitle, setRoleTitle] = useState('')
-  const [applicationUrl, setApplicationUrl] = useState('')
-  const formRef = useRef<HTMLFormElement>(null)
+  const [status, setStatus] = useState('APPLIED')
+  const [step1Error, setStep1Error] = useState('')
 
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  // Step 2 State
+  const [jobType, setJobType] = useState('FULL_TIME')
+  const [workplaceType, setWorkplaceType] = useState('REMOTE')
+  const [location, setLocation] = useState('')
+  const [dateApplied, setDateApplied] = useState(() => new Date().toISOString().split('T')[0])
+  
+  // Step 2 Optional details toggle
+  const [showMoreOptional, setShowMoreOptional] = useState(false)
+
+  const formRef = useRef<HTMLFormElement>(null)
 
   function handleUrlChange(url: string) {
     setApplicationUrl(url)
+    setStep1Error('')
     if (!companyName && url) {
       try {
         const parsed = new URL(url.startsWith('http') ? url : `https://${url}`)
@@ -35,7 +96,12 @@ export default function NewApplicationPage() {
         const parts = hostname.split('.')
         
         let detected = ''
-        if (hostname.includes('greenhouse.io') || hostname.includes('lever.co') || hostname.includes('ashbyhq.com') || hostname.includes('workday.com')) {
+        if (
+          hostname.includes('greenhouse.io') ||
+          hostname.includes('lever.co') ||
+          hostname.includes('ashbyhq.com') ||
+          hostname.includes('workday.com')
+        ) {
           const pathParts = parsed.pathname.split('/').filter(Boolean)
           if (pathParts.length > 0) detected = pathParts[0]
         } else if (parts.length >= 2) {
@@ -51,11 +117,32 @@ export default function NewApplicationPage() {
     }
   }
 
+  function handleProceedToStep2() {
+    if (!applicationUrl.trim()) {
+      setStep1Error('Job Post / Career Link is mandatory. Please provide a link.')
+      return
+    }
+    if (!companyName.trim()) {
+      setStep1Error('Company Name is required.')
+      return
+    }
+    if (!roleTitle.trim()) {
+      setStep1Error('Role Title is required.')
+      return
+    }
+    setStep1Error('')
+    setStep(2)
+  }
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
-        formRef.current?.requestSubmit()
+        if (step === 1) {
+          handleProceedToStep2()
+        } else {
+          formRef.current?.requestSubmit()
+        }
       }
       if (e.key === 'Escape' && e.target === document.body) {
         router.push('/applications')
@@ -63,11 +150,11 @@ export default function NewApplicationPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [router])
+  }, [step, applicationUrl, companyName, roleTitle, router])
 
   async function handleSubmit(formData: FormData) {
-    if (!companyName.trim() || !roleTitle.trim()) {
-      alert('Please provide Company Name and Role Title.')
+    if (!applicationUrl.trim() || !companyName.trim() || !roleTitle.trim()) {
+      alert('Please fill all mandatory fields.')
       return
     }
     setIsPending(true)
@@ -76,185 +163,379 @@ export default function NewApplicationPage() {
       formData.set('companyName', companyName)
       formData.set('roleTitle', roleTitle)
       formData.set('applicationUrl', applicationUrl)
+      formData.set('jobType', jobType)
+      formData.set('workplaceType', workplaceType)
+      if (dateApplied) formData.set('dateApplied', dateApplied)
       
       const slug = await createApplication(formData)
       router.push(slug ? `/applications/${slug}` : '/applications')
     } catch (e) {
       console.error(e)
-      alert('Failed to save.')
+      alert('Failed to save application.')
       setIsPending(false)
     }
   }
 
-  const today = new Date().toISOString().split('T')[0]
-
   return (
-    <div className="max-w-2xl mx-auto pt-6 pb-24">
-      {/* Top Nav */}
-      <div className="flex items-center justify-between mb-16">
+    <div className="max-w-2xl mx-auto pt-4 pb-24">
+      {/* Top Nav & Breadcrumbs */}
+      <div className="flex items-center justify-between mb-8">
         <Link 
           href="/applications" 
           className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span>Applications</span>
+          <span>Back to applications</span>
         </Link>
-        <button 
-          onClick={() => formRef.current?.requestSubmit()}
-          disabled={isPending}
-          className="text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-800 px-4 py-1.5 rounded-full transition-colors disabled:opacity-50"
-        >
-          {isPending ? 'Saving...' : 'Save Application'}
-        </button>
+
+        {/* Step Pill */}
+        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-400">
+          <span className={`w-2 h-2 rounded-full ${step === 1 ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+          <span>Step {step} of 2</span>
+        </div>
       </div>
 
-      <form ref={formRef} action={handleSubmit} className="space-y-10">
-        {/* URL Input */}
-        <div className="flex flex-col gap-3">
-          <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Job Post / Career Link</label>
-          <div className="relative group">
-            <input 
-              type="url"
-              value={applicationUrl}
-              onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder="Paste job link (optional)"
-              className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 pl-4 pr-12 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors font-mono"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-3">
-              {!applicationUrl && <Sparkles className="w-3.5 h-3.5 text-zinc-600" />}
-              {applicationUrl && <CompanyLogo name={companyName || 'X'} url={applicationUrl} className="w-5 h-5 rounded flex-shrink-0" />}
+      {/* ================= STEP 1 ================= */}
+      {step === 1 && (
+        <div className="space-y-8 animate-in fade-in duration-200">
+          {/* Header */}
+          <div className="space-y-1.5">
+            <h1 className="text-3xl sm:text-4xl font-light tracking-tight text-white">
+              Track New Application
+            </h1>
+            <p className="text-sm text-zinc-400 font-normal">
+              Provide the job link and core role info to get started.
+            </p>
+          </div>
+
+          {step1Error && (
+            <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-xs text-red-300 font-medium">
+              {step1Error}
+            </div>
+          )}
+
+          <div className="space-y-7">
+            {/* 1. Job Link (Mandatory) */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                  Job Post / Career Link <span className="text-red-400">*</span>
+                </label>
+                <span className="text-[11px] text-zinc-500">Mandatory</span>
+              </div>
+              <div className="relative group">
+                <input 
+                  type="url"
+                  required
+                  autoFocus
+                  value={applicationUrl}
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  placeholder="https://company.com/careers/role or job post link"
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 pl-4 pr-12 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
+                />
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {applicationUrl ? (
+                    <CompanyLogo name={companyName || 'Logo'} url={applicationUrl} className="w-5 h-5 rounded" />
+                  ) : (
+                    <LinkIcon className="w-4 h-4 text-zinc-600" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Company & Role */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-2.5">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                  Company Name <span className="text-red-400">*</span>
+                </label>
+                <input 
+                  name="companyName"
+                  required
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => {
+                    setCompanyName(e.target.value)
+                    setStep1Error('')
+                  }}
+                  placeholder="e.g. Linear, Figma, Stripe" 
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-medium"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                  Role Title <span className="text-red-400">*</span>
+                </label>
+                <RoleInput 
+                  name="roleTitle"
+                  required
+                  defaultValue={roleTitle}
+                  onChange={(val) => {
+                    setRoleTitle(val)
+                    setStep1Error('')
+                  }}
+                  placeholder="e.g. Product Designer, Founding Designer..." 
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 pl-9 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-medium"
+                />
+              </div>
+            </div>
+
+            {/* 3. Status Selector */}
+            <div className="flex flex-col gap-3 pt-2">
+              <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                Current Status
+              </label>
+              <div className="flex flex-wrap gap-2.5">
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setStatus(opt.value)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors border cursor-pointer ${
+                      status === opt.value 
+                        ? 'bg-zinc-100 text-black border-zinc-100 shadow-sm' 
+                        : 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
+                    }`}
+                  >
+                    {status === opt.value && <Check className="w-3.5 h-3.5" />}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Next Button */}
+            <div className="pt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={handleProceedToStep2}
+                className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-black px-6 py-3 rounded-xl text-sm font-semibold transition-all shadow-md shadow-black/40 cursor-pointer group"
+              >
+                <span>Continue to Details</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Title Area */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="flex flex-col gap-3">
-            <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Company Name *</label>
-            <input 
-              autoFocus
-              name="companyName"
-              required
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="e.g. Linear" 
-              className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors font-medium"
-            />
-          </div>
-          <div className="flex flex-col gap-3">
-            <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Role Title *</label>
-            <input 
-              name="roleTitle"
-              required
-              type="text"
-              value={roleTitle}
-              onChange={(e) => setRoleTitle(e.target.value)}
-              placeholder="e.g. Senior Product Designer" 
-              className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors font-medium"
-            />
-          </div>
-        </div>
+      {/* ================= STEP 2 ================= */}
+      {step === 2 && (
+        <form ref={formRef} action={handleSubmit} className="space-y-8 animate-in fade-in duration-200">
+          {/* Company Brand Card at Top of Step 2 */}
+          <div className="p-6 rounded-2xl bg-zinc-950/60 border border-zinc-900 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <CompanyLogo 
+                name={companyName} 
+                url={applicationUrl} 
+                className="w-14 h-14 rounded-2xl shrink-0" 
+              />
+              <div className="truncate">
+                <h2 className="text-2xl font-light tracking-tight text-white truncate">
+                  {companyName}
+                </h2>
+                <div className="flex items-center gap-2.5 mt-1">
+                  <span className="text-sm font-medium text-zinc-300 truncate">{roleTitle}</span>
+                  <StatusPill status={status} />
+                </div>
+              </div>
+            </div>
 
-        {/* Status Pills */}
-        <div className="flex flex-col gap-4 pt-2">
-          <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Current Status</label>
-          <div className="flex flex-wrap gap-3">
-            {STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setStatus(opt.value)}
-                className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold transition-colors border ${
-                  status === opt.value 
-                    ? 'bg-zinc-200 text-black border-zinc-200' 
-                    : 'bg-zinc-900/50 text-zinc-400 border-zinc-800/80 hover:border-zinc-700 hover:text-zinc-300'
-                }`}
-              >
-                {status === opt.value && <Check className="w-3.5 h-3.5" />}
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {!showAdvanced ? (
-          <div className="pt-4 flex justify-center">
             <button
               type="button"
-              onClick={() => setShowAdvanced(true)}
-              className="text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors border border-zinc-800/50 rounded-full px-4 py-1.5 bg-zinc-900/20"
+              onClick={() => setStep(1)}
+              className="text-xs text-zinc-400 hover:text-white underline underline-offset-4 shrink-0 transition-colors cursor-pointer"
             >
-              + Add Optional Details
+              Edit core info
             </button>
           </div>
-        ) : (
-          <div className="space-y-10 animate-fade-in pt-4">
-            <hr className="border-zinc-900/50" />
 
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
-              <div className="flex flex-col gap-3">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Date Applied</label>
+          <div className="space-y-6">
+            <div className="border-b border-zinc-900 pb-2">
+              <h3 className="text-sm font-medium text-zinc-200">Application & Location Details</h3>
+              <p className="text-xs text-zinc-500">Configure mandatory job specifications</p>
+            </div>
+
+            {/* Mandatory Job Type, Workplace & Location */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Job Type (Mandatory) */}
+              <div className="flex flex-col gap-2.5">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                  Job Type <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={jobType}
+                  onChange={(e) => setJobType(e.target.value)}
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-3 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer"
+                >
+                  {JOB_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Workplace Type (Mandatory) */}
+              <div className="flex flex-col gap-2.5">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                  Workplace Type <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={workplaceType}
+                  onChange={(e) => setWorkplaceType(e.target.value)}
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-3 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer"
+                >
+                  {WORKPLACE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Location (Mandatory) */}
+              <div className="flex flex-col gap-2.5">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                  Location <span className="text-red-400">*</span>
+                </label>
+                <LocationInput 
+                  name="location"
+                  defaultValue={location}
+                  placeholder="e.g. Remote (US), Bangalore, San Francisco..."
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 pl-9 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
+                />
+              </div>
+
+              {/* Date Applied (Mandatory) */}
+              <div className="flex flex-col gap-2.5">
+                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-400">
+                  Date Applied <span className="text-red-400">*</span>
+                </label>
                 <input 
                   name="dateApplied"
                   type="date"
-                  defaultValue={today}
-                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-300 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
-                />
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Location</label>
-                <input 
-                  name="location"
-                  type="text" 
-                  placeholder="e.g. Remote (US)"
-                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
-                />
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Target Salary</label>
-                <input 
-                  name="salary"
-                  type="text" 
-                  placeholder="e.g. $160k - $190k"
-                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
-                />
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Contact Name</label>
-                <input 
-                  name="contactName"
-                  type="text" 
-                  placeholder="e.g. Alex Morgan"
-                  className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors"
+                  value={dateApplied}
+                  onChange={(e) => setDateApplied(e.target.value)}
+                  required
+                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                 />
               </div>
             </div>
 
-            {/* Notes */}
-            <div className="flex flex-col gap-3">
-              <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">Notes & Strategy</label>
-              <textarea 
-                name="notes"
-                rows={5}
-                placeholder="Write down key talking points, interviewers, or thoughts..."
-                className="w-full bg-zinc-900/50 border border-zinc-800/80 rounded-xl py-3 px-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:bg-zinc-900 transition-colors resize-none leading-relaxed"
-              />
+            {/* Optional Details Collapsible Section */}
+            <div className="pt-4">
+              <button
+                type="button"
+                onClick={() => setShowMoreOptional(!showMoreOptional)}
+                className="w-full flex items-center justify-between p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 hover:bg-zinc-900/50 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                <span>Optional Details (Salary, Contact Recruiter, Notes)</span>
+                {showMoreOptional ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showMoreOptional && (
+                <div className="pt-6 space-y-6 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {/* Target Salary (Optional) */}
+                    <div className="flex flex-col gap-2.5">
+                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                        Target Salary (Optional)
+                      </label>
+                      <input 
+                        name="salary"
+                        type="text" 
+                        placeholder="e.g. $140k - $170k / ₹25 LPA"
+                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Job Description URL (Optional) */}
+                    <div className="flex flex-col gap-2.5">
+                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                        Job Description Link (Optional)
+                      </label>
+                      <input 
+                        name="jobDescriptionUrl"
+                        type="url" 
+                        placeholder="https://..."
+                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
+                      />
+                    </div>
+
+                    {/* Contact Name (Optional) */}
+                    <div className="flex flex-col gap-2.5">
+                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                        Contact / Recruiter Name (Optional)
+                      </label>
+                      <input 
+                        name="contactName"
+                        type="text" 
+                        placeholder="e.g. Sarah Jenkins"
+                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Contact Email (Optional) */}
+                    <div className="flex flex-col gap-2.5">
+                      <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                        Contact Email (Optional)
+                      </label>
+                      <input 
+                        name="contactEmail"
+                        type="email" 
+                        placeholder="e.g. sarah@company.com"
+                        className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes & Strategy (Optional) */}
+                  <div className="flex flex-col gap-2.5">
+                    <label className="block text-xs uppercase tracking-widest font-semibold text-zinc-500">
+                      Notes & Interview Strategy (Optional)
+                    </label>
+                    <textarea 
+                      name="notes"
+                      rows={4}
+                      placeholder="Write down recruiter talking points, portfolio version used, or application notes..."
+                      className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Step 2 Actions */}
+            <div className="pt-6 border-t border-zinc-900 flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-zinc-200 px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+
+              <button 
+                type="submit"
+                disabled={isPending}
+                className="flex items-center gap-2 text-xs font-semibold text-black bg-zinc-100 hover:bg-white px-6 py-3 rounded-xl transition-all shadow-md shadow-black/40 disabled:opacity-50 cursor-pointer"
+              >
+                {isPending ? 'Saving...' : 'Save Application'}
+              </button>
             </div>
           </div>
-        )}
-        
-        {/* Hidden keyboard hint */}
-        <div className="text-center pt-8">
-          <span className="text-[10px] text-zinc-700 font-mono tracking-widest uppercase">
-            Press <kbd className="px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 mx-1">⌘ + ↵</kbd> to save
-          </span>
-        </div>
-      </form>
+        </form>
+      )}
+
+      {/* Keyboard Shortcut Hint */}
+      <div className="text-center pt-10">
+        <span className="text-[11px] text-zinc-600 font-mono tracking-wider">
+          Press <kbd className="px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-400 mx-1">⌘ + ↵</kbd> {step === 1 ? 'to continue' : 'to save'}
+        </span>
+      </div>
     </div>
   )
 }

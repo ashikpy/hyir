@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { Plus, X, Sparkles, Building2, Briefcase, Link as LinkIcon, DollarSign, Calendar, MapPin, User, FileText } from 'lucide-react'
 import { createApplication } from '@/app/actions'
+import { LocationInput } from '@/components/ui/location-input'
+import { RoleInput } from '@/components/ui/role-input'
 
 export function QuickAddModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -11,8 +13,8 @@ export function QuickAddModal() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      // Toggle on N or Cmd+K
-      if ((e.key === 'n' && !e.metaKey && !e.ctrlKey && e.target === document.body) || (e.key === 'k' && (e.metaKey || e.ctrlKey))) {
+      // Toggle on N key
+      if (e.key.toLowerCase() === 'n' && !e.metaKey && !e.ctrlKey && e.target === document.body) {
         e.preventDefault()
         setIsOpen((open) => !open)
       }
@@ -107,12 +109,11 @@ export function QuickAddModal() {
               <label className="text-xs uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1.5">
                 <Briefcase className="w-3.5 h-3.5 text-zinc-500" /> Role *
               </label>
-              <input 
+              <RoleInput 
                 name="roleTitle"
                 required
-                type="text" 
-                placeholder="e.g. Senior Frontend Engineer" 
-                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                placeholder="e.g. Product Designer, Founding Designer..." 
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 pl-8 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
               />
             </div>
 
@@ -175,11 +176,10 @@ export function QuickAddModal() {
                 <label className="text-xs uppercase tracking-wider font-medium text-zinc-400 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-zinc-500" /> Location
                 </label>
-                <input 
+                <LocationInput 
                   name="location"
-                  type="text" 
-                  placeholder="Remote / New York" 
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+                  placeholder="Remote / SF / Bangalore" 
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 pl-8 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
                 />
               </div>
             </div>

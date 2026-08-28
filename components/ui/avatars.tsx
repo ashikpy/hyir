@@ -1,49 +1,87 @@
 'use client'
 
-import Image from 'next/image'
+import { useState } from 'react'
 
-export function CompanyLogo({ name, url, className = "w-6 h-6" }: { name: string, url?: string | null, className?: string }) {
-  // Try to extract domain if URL exists
+const GENERIC_JOB_HOSTS = [
+  'wellfound.com',
+  'angel.co',
+  'linkedin.com',
+  'greenhouse.io',
+  'lever.co',
+  'ashbyhq.com',
+  'workday.com',
+  'smartrecruiters.com',
+  'bamboohr.com',
+  'recruitee.com',
+]
+
+export function CompanyLogo({
+  name,
+  url,
+  className = "w-6 h-6"
+}: {
+  name: string
+  url?: string | null
+  className?: string
+}) {
+  const [hasError, setHasError] = useState(false)
   let domain = null
+
   if (url) {
     try {
-      domain = new URL(url).hostname
-    } catch (e) {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`)
+      const hostname = parsed.hostname.replace(/^www\./, '').toLowerCase()
+      // Only extract domain if it's not a generic job portal
+      if (!GENERIC_JOB_HOSTS.some(host => hostname.includes(host))) {
+        domain = hostname
+      }
+    } catch {
       // Invalid URL
     }
   }
 
-  // If no valid domain, fallback to initials using UI Avatars
-  if (!domain) {
-    const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=27272a&color=fafafa&format=svg`
+  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=27272a&color=fafafa&format=svg`
+
+  if (!domain || hasError) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={fallbackUrl} alt={`${name} logo`} className={`${className} rounded-md object-cover border border-zinc-800`} />
+      <img
+        src={fallbackUrl}
+        alt={`${name} logo`}
+        className={`${className} rounded-md object-cover border border-zinc-800 shrink-0`}
+      />
     )
   }
 
-  // Use Google Favicon API for high-res favicons (sz=128 gets a decent size)
-  const logoUrl = `https://s2.googleusercontent.com/s2/favicons?domain=${domain}&sz=128`
+  // Use unavatar with fallback=false so it returns 404 when no favicon exists, triggering onError to ui-avatars
+  const logoUrl = `https://unavatar.io/${domain}?fallback=false`
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img 
-      src={logoUrl} 
-      alt={`${name} logo`} 
-      className={`${className} rounded-md object-cover border border-zinc-800 bg-white`}
-      onError={(e) => {
-        // Fallback to UI avatars if Google fails to find it
-        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=27272a&color=fafafa&format=svg`
-      }}
+    <img
+      src={logoUrl}
+      alt={`${name} logo`}
+      className={`${className} rounded-md object-contain p-1 border border-zinc-800 bg-white shrink-0`}
+      onError={() => setHasError(true)}
     />
   )
 }
 
-export function ContactAvatar({ name, className = "w-8 h-8" }: { name: string, className?: string }) {
+export function ContactAvatar({
+  name,
+  className = "w-8 h-8"
+}: {
+  name: string
+  className?: string
+}) {
   const url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3f3f46&color=fafafa&rounded=true&format=svg`
-  
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt={name} className={`${className} rounded-full object-cover border border-zinc-700`} />
+    <img
+      src={url}
+      alt={name}
+      className={`${className} rounded-full object-cover border border-zinc-700 shrink-0`}
+    />
   )
 }

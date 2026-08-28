@@ -10,6 +10,9 @@ export async function createApplication(formData: FormData) {
   const status = formData.get('status') as ApplicationStatus
   const dateApplied = formData.get('dateApplied') as string
   const applicationUrl = formData.get('applicationUrl') as string
+  const jobDescriptionUrl = formData.get('jobDescriptionUrl') as string
+  const jobType = (formData.get('jobType') as any) || 'FULL_TIME'
+  const workplaceType = (formData.get('workplaceType') as any) || 'REMOTE'
   const salary = formData.get('salary') as string
   const location = formData.get('location') as string
   const contactName = formData.get('contactName') as string
@@ -17,6 +20,9 @@ export async function createApplication(formData: FormData) {
   const contactRole = formData.get('contactRole') as string
   const contactUrl = formData.get('contactUrl') as string
   const notes = formData.get('notes') as string
+  const resumeVersion = formData.get('resumeVersion') as string
+  const portfolioVersion = formData.get('portfolioVersion') as string
+  const nextFollowUpDate = formData.get('nextFollowUpDate') as string
 
   if (!companyName || !roleTitle) {
     throw new Error('Company name and role title are required')
@@ -39,8 +45,11 @@ export async function createApplication(formData: FormData) {
       companyName,
       roleTitle,
       status: status || 'SAVED',
+      jobType,
+      workplaceType,
       dateApplied: dateApplied ? new Date(dateApplied) : null,
       applicationUrl: applicationUrl || null,
+      jobDescriptionUrl: jobDescriptionUrl || null,
       salary: salary || null,
       location: location || null,
       contactName: contactName || null,
@@ -48,6 +57,9 @@ export async function createApplication(formData: FormData) {
       contactRole: contactRole || null,
       contactUrl: contactUrl || null,
       notes: notes || null,
+      resumeVersion: resumeVersion || null,
+      portfolioVersion: portfolioVersion || null,
+      nextFollowUpDate: nextFollowUpDate ? new Date(nextFollowUpDate) : null,
     }
   })
 
@@ -162,3 +174,244 @@ export async function deleteApplication(id: string) {
   revalidatePath('/applications')
   revalidatePath('/pipeline')
 }
+
+export async function exportApplicationsData() {
+  const applications = await prisma.application.findMany({
+    include: {
+      timelineEvents: {
+        orderBy: { date: 'asc' }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return applications.map(app => ({
+    id: app.id,
+    companyName: app.companyName,
+    roleTitle: app.roleTitle,
+    status: app.status,
+    jobType: app.jobType,
+    workplaceType: app.workplaceType,
+    location: app.location,
+    salary: app.salary,
+    dateApplied: app.dateApplied ? app.dateApplied.toISOString() : null,
+    applicationUrl: app.applicationUrl,
+    jobDescriptionUrl: app.jobDescriptionUrl,
+    contactName: app.contactName,
+    contactRole: app.contactRole,
+    contactEmail: app.contactEmail,
+    contactUrl: app.contactUrl,
+    nextFollowUpDate: app.nextFollowUpDate ? app.nextFollowUpDate.toISOString() : null,
+    notes: app.notes,
+    resumeVersion: app.resumeVersion,
+    portfolioVersion: app.portfolioVersion,
+    createdAt: app.createdAt.toISOString(),
+    updatedAt: app.updatedAt.toISOString(),
+    timelineEvents: app.timelineEvents.map(evt => ({
+      eventType: evt.eventType,
+      date: evt.date.toISOString(),
+      description: evt.description
+    }))
+  }))
+}
+
+export interface ImportPayloadRecord {
+  companyName: string
+  roleTitle: string
+  status: ApplicationStatus
+  dateApplied?: string | null
+  jobType?: string
+  workplaceType?: string
+  location?: string | null
+  salary?: string | null
+  applicationUrl?: string | null
+  jobDescriptionUrl?: string | null
+  contactName?: string | null
+  contactRole?: string | null
+  contactEmail?: string | null
+  contactUrl?: string | null
+  nextFollowUpDate?: string | null
+  notes?: string | null
+  resumeVersion?: string | null
+  portfolioVersion?: string | null
+  timelineEvents?: Array<{
+    eventType: TimelineEventType
+    date: string
+    description?: string | null
+  }>
+}
+
+export async function importApplicationsData(
+  records: ImportPayloadRecord[],
+  strategy: 'skip' | 'update' | 'create_new' = 'skip'
+) {
+  let user = await prisma.user.findFirst()
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email: 'user@example.com',
+        name: 'User'
+      }
+    })
+  }
+
+  let imported = 0
+  let updated = 0
+  let skipped = 0
+  const errors: string[] = []
+
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i]
+    if (!record.companyName || !record.roleTitle) {
+      skipped++
+      errors.push(`Row ${i + 1}: Missing company name or role title`)
+      continue
+    }
+
+    try {
+      const baseSlug = `${record.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${record.roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
+      const existingApp = await prisma.application.findFirst({
+        where: {
+          userId: user.id,
+          companyName: { equals: record.companyName, mode: 'insensitive' },
+          roleTitle: { equals: record.roleTitle, mode: 'insensitive' }
+        }
+      })
+
+      if (existingApp) {
+        if (strategy === 'skip') {
+          skipped++
+          continue
+        } else if (strategy === 'update') {
+          await prisma.application.update({
+            where: { id: existingApp.id },
+            data: {
+              status: record.status || existingApp.status,
+              dateApplied: record.dateApplied ? new Date(record.dateApplied) : existingApp.dateApplied,
+              location: record.location ?? existingApp.location,
+              salary: record.salary ?? existingApp.salary,
+              applicationUrl: record.applicationUrl ?? existingApp.applicationUrl,
+              jobDescriptionUrl: record.jobDescriptionUrl ?? existingApp.jobDescriptionUrl,
+              contactName: record.contactName ?? existingApp.contactName,
+              contactRole: record.contactRole ?? existingApp.contactRole,
+              contactEmail: record.contactEmail ?? existingApp.contactEmail,
+              contactUrl: record.contactUrl ?? existingApp.contactUrl,
+              nextFollowUpDate: record.nextFollowUpDate ? new Date(record.nextFollowUpDate) : existingApp.nextFollowUpDate,
+              notes: record.notes !== undefined && record.notes !== null && record.notes.trim() !== '' 
+                ? record.notes 
+                : existingApp.notes,
+              resumeVersion: record.resumeVersion ?? existingApp.resumeVersion,
+              portfolioVersion: record.portfolioVersion ?? existingApp.portfolioVersion,
+            }
+          })
+
+          if (record.timelineEvents && record.timelineEvents.length > 0) {
+            for (const evt of record.timelineEvents) {
+              await prisma.timelineEvent.create({
+                data: {
+                  applicationId: existingApp.id,
+                  eventType: evt.eventType || 'STATUS_CHANGE',
+                  date: evt.date ? new Date(evt.date) : new Date(),
+                  description: evt.description || null
+                }
+              })
+            }
+          }
+
+          updated++
+          continue
+        }
+      }
+
+      // Create new application
+      const existingCount = await prisma.application.count({
+        where: { slug: { startsWith: baseSlug } }
+      })
+      const slug = existingCount > 0 ? `${baseSlug}-${existingCount + 1}-${Math.floor(Math.random() * 1000)}` : baseSlug
+
+      const newApp = await prisma.application.create({
+        data: {
+          userId: user.id,
+          slug,
+          companyName: record.companyName,
+          roleTitle: record.roleTitle,
+          status: record.status || 'SAVED',
+          jobType: (record.jobType as any) || 'FULL_TIME',
+          workplaceType: (record.workplaceType as any) || 'REMOTE',
+          location: record.location || null,
+          salary: record.salary || null,
+          dateApplied: record.dateApplied ? new Date(record.dateApplied) : null,
+          applicationUrl: record.applicationUrl || null,
+          jobDescriptionUrl: record.jobDescriptionUrl || null,
+          contactName: record.contactName || null,
+          contactRole: record.contactRole || null,
+          contactEmail: record.contactEmail || null,
+          contactUrl: record.contactUrl || null,
+          nextFollowUpDate: record.nextFollowUpDate ? new Date(record.nextFollowUpDate) : null,
+          notes: record.notes || null,
+          resumeVersion: record.resumeVersion || null,
+          portfolioVersion: record.portfolioVersion || null,
+        }
+      })
+
+      if (record.timelineEvents && record.timelineEvents.length > 0) {
+        for (const evt of record.timelineEvents) {
+          await prisma.timelineEvent.create({
+            data: {
+              applicationId: newApp.id,
+              eventType: evt.eventType || 'STATUS_CHANGE',
+              date: evt.date ? new Date(evt.date) : new Date(),
+              description: evt.description || null
+            }
+          })
+        }
+      }
+
+      imported++
+    } catch (err) {
+      console.error(`Error importing row ${i + 1}:`, err)
+      errors.push(`Row ${i + 1} (${record.companyName}): ${err instanceof Error ? err.message : 'Unknown error'}`)
+      skipped++
+    }
+  }
+
+  try {
+    revalidatePath('/')
+    revalidatePath('/applications')
+    revalidatePath('/pipeline')
+    revalidatePath('/follow-ups')
+    revalidatePath('/analytics')
+  } catch {
+    // Ignore when called outside of Next request context
+  }
+
+  return {
+    total: records.length,
+    imported,
+    updated,
+    skipped,
+    errors
+  }
+}
+
+export async function getSearchApplications() {
+  const applications = await prisma.application.findMany({
+    select: {
+      id: true,
+      slug: true,
+      companyName: true,
+      roleTitle: true,
+      status: true,
+      location: true,
+      salary: true,
+      applicationUrl: true,
+      updatedAt: true,
+      contactName: true,
+    },
+    orderBy: { updatedAt: 'desc' }
+  })
+  return applications
+}
+
+
