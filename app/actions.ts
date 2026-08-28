@@ -116,16 +116,39 @@ export async function updateApplication(id: string, formData: FormData) {
   return updated.slug
 }
 
-export async function updateApplicationStatus(id: string, status: ApplicationStatus) {
-  await prisma.application.update({
+export async function updateApplicationStatus(id: string, newStatus: ApplicationStatus) {
+  const current = await prisma.application.findUnique({
     where: { id },
-    data: { status }
+    select: { status: true, companyName: true, roleTitle: true }
   })
 
-  revalidatePath('/')
-  revalidatePath('/applications')
-  revalidatePath('/pipeline')
-  revalidatePath('/follow-ups')
+  if (!current) throw new Error('Application not found')
+  if (current.status === newStatus) return
+
+  await prisma.$transaction([
+    prisma.application.update({
+      where: { id },
+      data: { status: newStatus }
+    }),
+    prisma.timelineEvent.create({
+      data: {
+        applicationId: id,
+        eventType: 'STATUS_CHANGE',
+        date: new Date(),
+        description: `Stage moved from ${current.status.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`
+      }
+    })
+  ])
+
+  try {
+    revalidatePath('/')
+    revalidatePath('/applications')
+    revalidatePath('/pipeline')
+    revalidatePath('/analytics')
+    revalidatePath('/follow-ups')
+  } catch {
+    // Ignore outside Next request lifecycle
+  }
 }
 
 export async function addTimelineEvent(applicationId: string, formData: FormData) {
@@ -413,5 +436,6 @@ export async function getSearchApplications() {
   })
   return applications
 }
+
 
 
