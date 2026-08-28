@@ -11,6 +11,7 @@ import { HyrLogo } from './hyr-logo'
 const items = [
   { name: 'Dashboard', href: '/' },
   { name: 'Applications', href: '/applications' },
+  { name: 'Triage', href: '/triage' },
   { name: 'Pipeline', href: '/pipeline' },
   { name: 'Follow-ups', href: '/follow-ups' },
   { name: 'Analytics', href: '/analytics' },

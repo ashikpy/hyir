@@ -126,12 +126,20 @@ export function CommandPalette() {
       action: () => router.push('/'),
     },
     {
-      id: 'nav-applications',
+      id: 'nav-apps',
       type: 'nav',
       title: 'Job Applications',
       subtitle: 'Table view of all applications',
       icon: Briefcase,
       action: () => router.push('/applications'),
+    },
+    {
+      id: 'nav-triage',
+      type: 'nav',
+      title: 'Triage & Incomplete',
+      subtitle: 'Audit missing details and drafts',
+      icon: Clock,
+      action: () => router.push('/triage'),
     },
     {
       id: 'nav-pipeline',
