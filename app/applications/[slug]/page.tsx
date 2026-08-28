@@ -14,9 +14,12 @@ import {
   FileText,
   Clock,
   FileCode,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Sparkles,
+  CheckCircle2,
+  GitCommit
 } from "lucide-react"
-import { ApplicationStatus } from "@prisma/client"
+import { ApplicationStatus, TimelineEventType } from "@prisma/client"
 import { CompanyLogo, ContactAvatar } from "@/components/ui/avatars"
 import { ApplicationActions } from "@/components/ui/application-actions"
 import { AddTimelineEventModal } from "@/components/ui/add-timeline-event-modal"
@@ -25,17 +28,17 @@ export const dynamic = 'force-dynamic'
 
 function StatusBadge({ status }: { status: ApplicationStatus }) {
   const statusConfig: Record<ApplicationStatus, string> = {
-    SAVED: 'text-zinc-500 border-zinc-800 bg-zinc-900/60',
-    APPLIED: 'text-blue-400 border-blue-400/20 bg-blue-950/40',
-    CONTACTED: 'text-purple-400 border-purple-400/20 bg-purple-950/40',
-    SCREENING: 'text-amber-400 border-amber-400/20 bg-amber-950/40',
-    INTERVIEW: 'text-orange-400 border-orange-400/20 bg-orange-950/40',
-    ASSIGNMENT: 'text-indigo-400 border-indigo-400/20 bg-indigo-950/40',
-    OFFER: 'text-emerald-400 border-emerald-400/20 bg-emerald-950/40',
-    ACCEPTED: 'text-emerald-500 border-emerald-500/20 bg-emerald-950/40',
-    REJECTED: 'text-red-400 border-red-400/20 bg-red-950/40',
-    GHOSTED: 'text-zinc-500 border-zinc-800 bg-zinc-900/60',
-    WITHDRAWN: 'text-zinc-500 border-zinc-800 bg-zinc-900/60',
+    SAVED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
+    APPLIED: 'text-blue-400 border-blue-500/30 bg-blue-950/40',
+    CONTACTED: 'text-purple-400 border-purple-500/30 bg-purple-950/40',
+    SCREENING: 'text-amber-400 border-amber-500/30 bg-amber-950/40',
+    INTERVIEW: 'text-orange-400 border-orange-500/30 bg-orange-950/40',
+    ASSIGNMENT: 'text-indigo-400 border-indigo-500/30 bg-indigo-950/40',
+    OFFER: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40',
+    ACCEPTED: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40',
+    REJECTED: 'text-rose-400 border-rose-500/30 bg-rose-950/40',
+    GHOSTED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
+    WITHDRAWN: 'text-zinc-500 border-zinc-800 bg-zinc-900',
   }
 
   const config = statusConfig[status] || statusConfig.SAVED
@@ -45,6 +48,19 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
       {status.replace('_', ' ')}
     </span>
   )
+}
+
+function formatEventType(type: TimelineEventType | string): string {
+  switch (type) {
+    case 'STATUS_CHANGE':
+      return 'Status Changed'
+    case 'FOLLOW_UP':
+      return 'Follow-up Scheduled'
+    case 'NOTE_ADDED':
+      return 'Note Logged'
+    default:
+      return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+  }
 }
 
 export default async function ApplicationDetailPage(props: { params: Promise<{ slug: string }> }) {
@@ -111,15 +127,15 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
           {/* Key Attributes Overview */}
           <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-zinc-950/60 border border-zinc-900">
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-zinc-400" /> Type
+              <span className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-zinc-500" /> Type
               </span>
               <span className="text-sm font-medium text-zinc-200">{application.jobType.replace('_', ' ')}</span>
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-zinc-400" /> Location
+              <span className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-zinc-500" /> Location
               </span>
               <span className="text-sm font-medium text-zinc-200">
                 {application.location || application.workplaceType}
@@ -127,15 +143,15 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-zinc-400" /> Salary
+              <span className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-zinc-500" /> Target Salary
               </span>
               <span className="text-sm font-medium text-zinc-200">{application.salary || '—'}</span>
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" /> Updated
+              <span className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-zinc-500" /> Last Updated
               </span>
               <span className="text-sm font-medium text-zinc-200">{format(new Date(application.updatedAt), 'MMM d')}</span>
             </div>
@@ -174,7 +190,7 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
             <div className="flex items-center justify-between border-b border-zinc-900/80 pb-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-zinc-400" />
-                <h3 className="text-xs uppercase tracking-wider font-semibold text-zinc-400">Notes & Strategy</h3>
+                <h3 className="text-xs font-semibold text-zinc-300">Notes & Strategy</h3>
               </div>
             </div>
 
@@ -195,7 +211,7 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-zinc-500 block">Resume Version</span>
+                  <span className="text-xs text-zinc-400 block">Resume Version</span>
                   <span className="text-xs font-medium text-zinc-200">{application.resumeVersion || 'Default'}</span>
                 </div>
               </div>
@@ -205,7 +221,7 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
                   <FileCode className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-zinc-500 block">Portfolio Version</span>
+                  <span className="text-xs text-zinc-400 block">Portfolio Version</span>
                   <span className="text-xs font-medium text-zinc-200">{application.portfolioVersion || 'Default'}</span>
                 </div>
               </div>
@@ -218,13 +234,13 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
         <div className="space-y-6">
           
           {/* Follow-up Reminder Card */}
-          <section className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-4">
-            <h3 className="text-xs uppercase tracking-wider font-semibold text-zinc-500">Follow-up</h3>
+          <section className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-3">
+            <h3 className="text-xs font-semibold text-zinc-300">Follow-up</h3>
             {application.nextFollowUpDate ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-zinc-500">Next Scheduled For</span>
-                  <span className={`text-base font-semibold ${
+                  <span className={`text-sm font-semibold ${
                     isPast(new Date(application.nextFollowUpDate)) && !isToday(new Date(application.nextFollowUpDate))
                       ? 'text-red-400'
                       : isToday(new Date(application.nextFollowUpDate))
@@ -242,7 +258,7 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
 
           {/* Contact Information */}
           <section className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-3">
-            <h3 className="text-xs uppercase tracking-wider font-semibold text-zinc-500">Recruiter / Contact</h3>
+            <h3 className="text-xs font-semibold text-zinc-300">Recruiter / Contact</h3>
             {application.contactName ? (
               <div className="flex items-start gap-3 pt-1">
                 <ContactAvatar name={application.contactName} className="w-9 h-9 mt-0.5 shrink-0" />
@@ -276,12 +292,12 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
             )}
           </section>
 
-          {/* Timeline & Activity Feed (Compact & Functional in Sidebar) */}
+          {/* Timeline & Activity Feed (No hanging line) */}
           <section className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-zinc-400" />
-                <h3 className="text-xs uppercase tracking-wider font-semibold text-zinc-400">Activity Timeline</h3>
+                <h3 className="text-xs font-semibold text-zinc-300">Activity Timeline</h3>
               </div>
               <AddTimelineEventModal applicationId={application.id} />
             </div>
@@ -290,25 +306,40 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
               {application.timelineEvents.length === 0 ? (
                 <p className="text-xs text-zinc-600 italic py-2">No timeline events recorded yet.</p>
               ) : (
-                <div className="relative border-l border-zinc-800 ml-2 space-y-6">
-                  {application.timelineEvents.map((event) => (
-                    <div key={event.id} className="relative pl-4">
-                      <div className="absolute w-2 h-2 bg-zinc-500 rounded-full -left-[4.5px] top-1 ring-4 ring-black" />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-mono text-zinc-500">
-                          {format(new Date(event.date), 'MMM d, yyyy')}
-                        </span>
-                        <span className="text-xs font-semibold text-zinc-200">
-                          {event.eventType.replace('_', ' ')}
-                        </span>
-                        {event.description && (
-                          <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
-                            {event.description}
-                          </p>
+                <div className="space-y-0">
+                  {application.timelineEvents.map((event, index) => {
+                    const isLast = index === application.timelineEvents.length - 1
+                    return (
+                      <div key={event.id} className="relative flex gap-3 pb-6 last:pb-0">
+                        {/* Connecting vertical line (only extends to next node, never below the last node) */}
+                        {!isLast && (
+                          <div className="absolute left-[7px] top-3.5 bottom-0 w-px bg-zinc-800" />
                         )}
+
+                        {/* Node Dot */}
+                        <div className="relative z-10 w-3.5 h-3.5 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                        </div>
+
+                        {/* Event Content */}
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-xs font-medium text-zinc-200">
+                              {formatEventType(event.eventType)}
+                            </span>
+                            <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+                              {format(new Date(event.date), 'MMM d, yyyy')}
+                            </span>
+                          </div>
+                          {event.description && (
+                            <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
+                              {event.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
