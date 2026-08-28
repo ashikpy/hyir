@@ -111,9 +111,35 @@ export async function updateApplication(id: string, formData: FormData) {
   revalidatePath('/')
   revalidatePath('/applications')
   revalidatePath('/pipeline')
+  revalidatePath('/triage')
   revalidatePath(`/applications/${slug}`)
   
   return updated.slug
+}
+
+export async function quickUpdateTriageField(
+  id: string,
+  data: {
+    applicationUrl?: string | null
+    contactName?: string | null
+    contactEmail?: string | null
+    salary?: string | null
+    notes?: string | null
+    status?: ApplicationStatus
+  }
+) {
+  const updated = await prisma.application.update({
+    where: { id },
+    data,
+  })
+
+  revalidatePath('/')
+  revalidatePath('/applications')
+  revalidatePath('/pipeline')
+  revalidatePath('/triage')
+  revalidatePath(`/applications/${updated.slug}`)
+
+  return updated
 }
 
 export async function updateApplicationStatus(id: string, newStatus: ApplicationStatus) {
@@ -146,6 +172,7 @@ export async function updateApplicationStatus(id: string, newStatus: Application
     revalidatePath('/pipeline')
     revalidatePath('/analytics')
     revalidatePath('/follow-ups')
+    revalidatePath('/triage')
   } catch {
     // Ignore outside Next request lifecycle
   }
