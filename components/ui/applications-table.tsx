@@ -229,7 +229,6 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                 <th className="px-5 py-3.5 text-center">Type</th>
                 <th className="px-5 py-3.5">Status</th>
                 <th className="px-5 py-3.5">Location</th>
-                <th className="px-5 py-3.5">Contact</th>
                 <th
                   onClick={() => toggleSort('applied')}
                   className="px-5 py-3.5 cursor-pointer hover:text-zinc-300 group select-none"
@@ -239,6 +238,7 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                     <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </th>
+                <th className="px-5 py-3.5">Contact</th>
                 <th className="px-5 py-3.5">Follow-up</th>
               </tr>
             </thead>
@@ -280,16 +280,16 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                     )}
                   </td>
 
-                  {/* 5. Contact */}
-                  <td className="px-5 py-3.5 text-zinc-300 text-xs">
-                    {app.contactName || <span className="text-zinc-700">—</span>}
-                  </td>
-
-                  {/* 6. Applied Date */}
+                  {/* 5. Applied Date */}
                   <td className="px-5 py-3.5 text-zinc-400 text-xs">
                     {app.dateApplied
                       ? format(new Date(app.dateApplied), 'MMM d, yyyy')
                       : <span className="text-zinc-700">—</span>}
+                  </td>
+
+                  {/* 6. Contact (just before Follow-up) */}
+                  <td className="px-5 py-3.5 text-zinc-300 text-xs">
+                    {app.contactName || <span className="text-zinc-700">—</span>}
                   </td>
 
                   {/* 7. Follow-up */}
