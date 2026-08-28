@@ -34,13 +34,6 @@ const STATUS_OPTIONS = [
     dotColor: 'bg-blue-400',
   },
   {
-    value: 'SAVED',
-    label: 'Draft',
-    activeClass: 'bg-zinc-800 text-zinc-200 border-zinc-600 ring-1 ring-zinc-500/30',
-    idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300',
-    dotColor: 'bg-zinc-400',
-  },
-  {
     value: 'CONTACTED',
     label: 'Contacted',
     activeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/60 ring-1 ring-purple-500/30',
@@ -60,6 +53,20 @@ const STATUS_OPTIONS = [
     activeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 ring-1 ring-emerald-500/30',
     idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-emerald-500/40 hover:text-emerald-300',
     dotColor: 'bg-emerald-400',
+  },
+  {
+    value: 'REJECTED',
+    label: 'Rejected',
+    activeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/60 ring-1 ring-rose-500/30',
+    idleClass: 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-rose-500/40 hover:text-rose-300',
+    dotColor: 'bg-rose-400',
+  },
+  {
+    value: 'GHOSTED',
+    label: 'Ghosted',
+    activeClass: 'bg-zinc-800/80 text-zinc-300 border-zinc-700 ring-1 ring-zinc-600/30',
+    idleClass: 'bg-[#0c0c0e] text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300',
+    dotColor: 'bg-zinc-500',
   },
 ]
 
