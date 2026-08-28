@@ -20,10 +20,7 @@ import {
   User,
   Mail,
   FileText,
-  ChevronRight,
-  ChevronLeft,
-  Sparkles,
-  Zap
+  Calendar
 } from 'lucide-react'
 
 export interface TriageApp {
@@ -48,7 +45,82 @@ export interface TriageApp {
   updatedAt: Date | string
 }
 
-export type TriageFilter = 'ALL' | 'DRAFTS' | 'NO_URL' | 'NO_CONTACT' | 'NO_SALARY'
+export type TriageFilter = 'ALL' | 'DRAFTS' | 'NO_URL' | 'NO_DATE' | 'NO_CONTACT' | 'NO_SALARY'
+
+const STATUS_OPTIONS = [
+  {
+    value: 'APPLIED',
+    label: 'Applied',
+    activeClass: 'bg-blue-500/15 text-blue-300 border-blue-500/60 ring-1 ring-blue-500/30',
+    idleClass: 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:border-blue-500/40 hover:text-blue-300',
+    dotColor: 'bg-blue-400',
+    checkColor: 'text-blue-400',
+  },
+  {
+    value: 'CONTACTED',
+    label: 'Contacted',
+    activeClass: 'bg-purple-500/15 text-purple-300 border-purple-500/60 ring-1 ring-purple-500/30',
+    idleClass: 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:border-purple-500/40 hover:text-purple-300',
+    dotColor: 'bg-purple-400',
+    checkColor: 'text-purple-400',
+  },
+  {
+    value: 'INTERVIEW',
+    label: 'Interview',
+    activeClass: 'bg-orange-500/15 text-orange-300 border-orange-500/60 ring-1 ring-orange-500/30',
+    idleClass: 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:border-orange-500/40 hover:text-orange-300',
+    dotColor: 'bg-orange-400',
+    checkColor: 'text-orange-400',
+  },
+  {
+    value: 'OFFER',
+    label: 'Offer',
+    activeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/60 ring-1 ring-emerald-500/30',
+    idleClass: 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:border-emerald-500/40 hover:text-emerald-300',
+    dotColor: 'bg-emerald-400',
+    checkColor: 'text-emerald-400',
+  },
+  {
+    value: 'REJECTED',
+    label: 'Rejected',
+    activeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/60 ring-1 ring-rose-500/30',
+    idleClass: 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:border-rose-500/40 hover:text-rose-300',
+    dotColor: 'bg-rose-400',
+    checkColor: 'text-rose-400',
+  },
+  {
+    value: 'GHOSTED',
+    label: 'Ghosted',
+    activeClass: 'bg-zinc-800 text-zinc-200 border-zinc-600 ring-1 ring-zinc-500/30',
+    idleClass: 'bg-zinc-900/60 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300',
+    dotColor: 'bg-zinc-500',
+    checkColor: 'text-zinc-400',
+  },
+]
+
+function StatusBadge({ status }: { status: ApplicationStatus }) {
+  const statusConfig: Record<ApplicationStatus, string> = {
+    SAVED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
+    APPLIED: 'text-blue-400 border-blue-500/20 bg-blue-950/40',
+    CONTACTED: 'text-purple-400 border-purple-500/20 bg-purple-950/40',
+    SCREENING: 'text-amber-400 border-amber-500/20 bg-amber-950/40',
+    INTERVIEW: 'text-orange-400 border-orange-500/20 bg-orange-950/40',
+    ASSIGNMENT: 'text-indigo-400 border-indigo-500/20 bg-indigo-950/40',
+    OFFER: 'text-emerald-400 border-emerald-500/20 bg-emerald-950/40',
+    ACCEPTED: 'text-emerald-400 border-emerald-500/20 bg-emerald-950/40',
+    REJECTED: 'text-rose-400 border-rose-500/20 bg-rose-950/40',
+    GHOSTED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
+    WITHDRAWN: 'text-zinc-500 border-zinc-800 bg-zinc-900',
+  }
+
+  const config = statusConfig[status] || statusConfig.SAVED
+
+  return (
+    <span className={`text-[10px] uppercase tracking-wider font-semibold px-2.5 py-0.5 border rounded-full ${config}`}>
+      {status.replace('_', ' ')}
+    </span>
+  )
+}
 
 interface IssueTag {
   label: string
@@ -65,6 +137,9 @@ function getAppIssues(app: TriageApp): IssueTag[] {
   if (!app.applicationUrl) {
     tags.push({ label: 'No Link', tier: 'blocker', key: 'no_url' })
   }
+  if (!app.dateApplied && app.status !== 'SAVED') {
+    tags.push({ label: 'No Applied Date', tier: 'blocker', key: 'no_date' })
+  }
   if (app.nextFollowUpDate) {
     const due = new Date(app.nextFollowUpDate)
     if (isPast(due) && !isToday(due) && app.status !== 'REJECTED' && app.status !== 'GHOSTED') {
@@ -78,7 +153,7 @@ function getAppIssues(app: TriageApp): IssueTag[] {
     tags.push({ label: 'No Salary', tier: 'warning', key: 'no_salary' })
   }
   if (app.status === 'INTERVIEW' && !app.nextFollowUpDate) {
-    tags.push({ label: 'No Interview Date', tier: 'warning', key: 'no_date' })
+    tags.push({ label: 'No Interview Date', tier: 'warning', key: 'no_interview_date' })
   }
   if (!app.notes || app.notes.trim() === '') {
     tags.push({ label: 'No Notes', tier: 'info', key: 'no_notes' })
@@ -95,6 +170,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
   // Local state for fast drawer edits
   const [formUrl, setFormUrl] = useState('')
+  const [formDateApplied, setFormDateApplied] = useState('')
   const [formSalary, setFormSalary] = useState('')
   const [formContactName, setFormContactName] = useState('')
   const [formContactEmail, setFormContactEmail] = useState('')
@@ -102,6 +178,18 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
   const [formStatus, setFormStatus] = useState<ApplicationStatus>('APPLIED')
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const notesTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Auto-resize notes textarea
+  useEffect(() => {
+    if (notesTextareaRef.current) {
+      notesTextareaRef.current.style.height = 'auto'
+      notesTextareaRef.current.style.height = `${Math.min(
+        Math.max(notesTextareaRef.current.scrollHeight, 80),
+        360
+      )}px`
+    }
+  }, [formNotes, activeAppId])
 
   // Filter applications that have any issues
   const triageItems = useMemo(() => {
@@ -117,17 +205,19 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
   const counts = useMemo(() => {
     let drafts = 0
     let noUrl = 0
+    let noDate = 0
     let noContact = 0
     let noSalary = 0
 
     triageItems.forEach(({ issues }) => {
       if (issues.some((i) => i.key === 'draft')) drafts++
       if (issues.some((i) => i.key === 'no_url')) noUrl++
+      if (issues.some((i) => i.key === 'no_date')) noDate++
       if (issues.some((i) => i.key === 'no_contact')) noContact++
       if (issues.some((i) => i.key === 'no_salary')) noSalary++
     })
 
-    return { drafts, noUrl, noContact, noSalary }
+    return { drafts, noUrl, noDate, noContact, noSalary }
   }, [triageItems])
 
   // Filtered by active tab & search
@@ -142,6 +232,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
       if (filter === 'DRAFTS') return issues.some((i) => i.key === 'draft')
       if (filter === 'NO_URL') return issues.some((i) => i.key === 'no_url')
+      if (filter === 'NO_DATE') return issues.some((i) => i.key === 'no_date')
       if (filter === 'NO_CONTACT') return issues.some((i) => i.key === 'no_contact')
       if (filter === 'NO_SALARY') return issues.some((i) => i.key === 'no_salary')
 
@@ -158,6 +249,11 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
   useEffect(() => {
     if (activeApp) {
       setFormUrl(activeApp.applicationUrl || '')
+      setFormDateApplied(
+        activeApp.dateApplied
+          ? new Date(activeApp.dateApplied).toISOString().split('T')[0]
+          : ''
+      )
       setFormSalary(activeApp.salary || '')
       setFormContactName(activeApp.contactName || '')
       setFormContactEmail(activeApp.contactEmail || '')
@@ -180,7 +276,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeAppId, formUrl, formSalary, formContactName, formContactEmail, formNotes, formStatus])
+  }, [activeAppId, formUrl, formDateApplied, formSalary, formContactName, formContactEmail, formNotes, formStatus])
 
   async function handleSaveDrawer(advanceToNext = false) {
     if (!activeApp) return
@@ -188,6 +284,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     try {
       await quickUpdateTriageField(activeApp.id, {
         applicationUrl: formUrl.trim() || null,
+        dateApplied: formDateApplied.trim() ? formDateApplied.trim() : null,
         salary: formSalary.trim() || null,
         contactName: formContactName.trim() || null,
         contactEmail: formContactEmail.trim() || null,
@@ -215,10 +312,6 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       setIsSaving(false)
     }
   }
-
-  const completedCount = applications.length - triageItems.length
-  const totalApps = applications.length
-  const completenessPercent = totalApps > 0 ? Math.round((completedCount / totalApps) * 100) : 100
 
   return (
     <div className="space-y-6 pb-20">
@@ -265,6 +358,19 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
           <button
             type="button"
+            onClick={() => setFilter('NO_DATE')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
+              filter === 'NO_DATE'
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 font-semibold'
+                : 'text-zinc-400 hover:text-blue-300 hover:bg-zinc-900/50'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <span>Missing Date ({counts.noDate})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setFilter('NO_CONTACT')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
               filter === 'NO_CONTACT'
@@ -301,40 +407,48 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
         </div>
       </div>
 
-      {/* Linear-Style Compact Table / List */}
+      {/* Linear-Style Compact Table / List with Dedicated Columns */}
       <div className="border border-zinc-900 rounded-2xl overflow-hidden bg-zinc-950/40 divide-y divide-zinc-900/60">
+        {/* Table Header */}
+        <div className="hidden sm:flex items-center justify-between gap-4 px-5 py-3 bg-zinc-900/40 text-[11px] uppercase tracking-wider font-semibold text-zinc-500 border-b border-zinc-900">
+          <div className="w-64">Company & Role</div>
+          <div className="w-32">Status</div>
+          <div className="flex-1">Missing Info</div>
+          <div className="w-28 text-right">Action</div>
+        </div>
+
         {filteredApps.map(({ app, issues }) => {
           const isSelected = activeAppId === app.id
           return (
             <div
               key={app.id}
               onClick={() => setActiveAppId(app.id)}
-              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 hover:bg-zinc-900/40 transition-colors cursor-pointer group ${
+              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 hover:bg-zinc-900/40 transition-colors cursor-pointer group ${
                 isSelected ? 'bg-zinc-900/60 ring-1 ring-zinc-700' : ''
               }`}
             >
-              {/* Left: Company & Role */}
-              <div className="flex items-center gap-3 min-w-[240px] max-w-sm truncate">
+              {/* 1. Company & Role */}
+              <div className="flex items-center gap-3 w-full sm:w-64 truncate">
                 <CompanyLogo
                   name={app.companyName}
                   url={app.applicationUrl}
-                  className="w-7 h-7 rounded-lg shrink-0"
+                  className="w-8 h-8 rounded-lg shrink-0"
                 />
                 <div className="truncate">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-xs text-zinc-200 group-hover:text-white transition-colors truncate">
-                      {app.companyName}
-                    </span>
-                    <span className="text-[10px] text-zinc-500 px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800">
-                      {app.status}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-zinc-400 truncate mt-0.5">{app.roleTitle}</div>
+                  <span className="font-semibold text-xs text-zinc-200 group-hover:text-white transition-colors truncate block">
+                    {app.companyName}
+                  </span>
+                  <span className="text-[11px] text-zinc-400 truncate block mt-0.5">{app.roleTitle}</span>
                 </div>
               </div>
 
-              {/* Middle: Compact Issue Chips */}
-              <div className="flex flex-wrap items-center gap-1.5 flex-1 max-w-md">
+              {/* 2. Status (Dedicated Column) */}
+              <div className="w-full sm:w-32 shrink-0">
+                <StatusBadge status={app.status} />
+              </div>
+
+              {/* 3. Missing Info Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                 {issues.map((issue) => {
                   const chipStyle =
                     issue.tier === 'blocker'
@@ -354,8 +468,8 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                 })}
               </div>
 
-              {/* Right: Quick Fill & View Role */}
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              {/* 4. Actions */}
+              <div className="flex items-center justify-end gap-2 w-full sm:w-28 shrink-0 self-end sm:self-center">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -402,57 +516,75 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
           {/* Drawer Panel */}
           <div className="relative w-full max-w-md bg-[#0c0c0e] border-l border-zinc-800 h-full p-6 flex flex-col shadow-2xl z-10 animate-in slide-in-from-right duration-200">
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-900">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-zinc-900">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <CompanyLogo
                   name={activeApp.companyName}
                   url={formUrl || activeApp.applicationUrl}
                   className="w-9 h-9 rounded-xl shrink-0"
                 />
-                <div className="truncate">
-                  <h3 className="text-sm font-semibold text-white truncate">{activeApp.companyName}</h3>
-                  <p className="text-xs text-zinc-400 truncate">{activeApp.roleTitle}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold text-white truncate" title={activeApp.companyName}>
+                    {activeApp.companyName}
+                  </h3>
+                  <p className="text-xs text-zinc-400 truncate" title={activeApp.roleTitle}>
+                    {activeApp.roleTitle}
+                  </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveAppId(null)}
-                className="p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Link
+                  href={`/applications/${activeApp.slug}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition-colors"
+                  title={`Open ${activeApp.companyName} page in new tab`}
+                >
+                  <span>Open Page</span>
+                  <ExternalLink className="w-3 h-3 text-zinc-400" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setActiveAppId(null)}
+                  className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Quick Fill Form Fields */}
             <div className="space-y-4 py-5 overflow-y-auto flex-1 text-xs">
-              {/* Status Selector */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-300 flex items-center justify-between">
-                  <span>Application Status</span>
-                  {formStatus === 'SAVED' && (
-                    <button
-                      type="button"
-                      onClick={() => setFormStatus('APPLIED')}
-                      className="text-[11px] text-blue-400 hover:underline cursor-pointer"
-                    >
-                      Mark as Applied ↵
-                    </button>
-                  )}
+              {/* Status 3x2 Grid */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-300 block">
+                  Application Status
                 </label>
-                <select
-                  value={formStatus}
-                  onChange={(e) => setFormStatus(e.target.value as ApplicationStatus)}
-                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer"
-                >
-                  <option value="APPLIED">Applied</option>
-                  <option value="CONTACTED">Contacted</option>
-                  <option value="INTERVIEW">Interview</option>
-                  <option value="OFFER">Offer</option>
-                  <option value="REJECTED">Rejected</option>
-                  <option value="GHOSTED">Ghosted</option>
-                  <option value="SAVED">Draft</option>
-                </select>
+                <div className="grid grid-cols-3 gap-2">
+                  {STATUS_OPTIONS.map((opt) => {
+                    const isSelected = formStatus === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setFormStatus(opt.value as ApplicationStatus)}
+                        className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all border cursor-pointer ${
+                          isSelected ? opt.activeClass : opt.idleClass
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${opt.dotColor} ${
+                              isSelected ? 'scale-110' : 'opacity-60'
+                            }`}
+                          />
+                          <span className="truncate">{opt.label}</span>
+                        </div>
+                        {isSelected && <Check className={`w-3 h-3 shrink-0 ml-1 ${opt.checkColor}`} />}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Job Post URL */}
@@ -460,16 +592,42 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                 <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
                   <LinkIcon className="w-3.5 h-3.5 text-zinc-500" />
                   <span>Job Post URL</span>
-                  {!formUrl && <span className="text-red-400">*</span>}
+                  {!formUrl && <span className="text-red-400 font-normal">*</span>}
                 </label>
                 <input
                   type="url"
                   value={formUrl}
                   onChange={(e) => setFormUrl(e.target.value)}
                   placeholder="https://company.com/careers/role"
-                  className={`w-full bg-zinc-900/60 border rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors ${
-                    !formUrl ? 'border-amber-500/40 ring-1 ring-amber-500/20' : 'border-zinc-800'
-                  }`}
+                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
+                />
+              </div>
+
+              {/* Date Applied */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>Date Applied</span>
+                    {!formDateApplied && formStatus !== 'SAVED' && (
+                      <span className="text-red-400 font-normal">*</span>
+                    )}
+                  </label>
+                  {!formDateApplied && (
+                    <button
+                      type="button"
+                      onClick={() => setFormDateApplied(new Date().toISOString().split('T')[0])}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                    >
+                      Set Today
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="date"
+                  value={formDateApplied}
+                  onChange={(e) => setFormDateApplied(e.target.value)}
+                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                 />
               </div>
 
@@ -484,9 +642,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                   value={formSalary}
                   onChange={(e) => setFormSalary(e.target.value)}
                   placeholder="e.g. $140k - $170k / ₹25 LPA"
-                  className={`w-full bg-zinc-900/60 border rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors ${
-                    !formSalary ? 'border-zinc-800' : 'border-zinc-800'
-                  }`}
+                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                 />
               </div>
 
@@ -528,17 +684,21 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                   <span>Notes & Strategy</span>
                 </label>
                 <textarea
-                  rows={3}
+                  ref={notesTextareaRef}
                   value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
+                  onChange={(e) => {
+                    setFormNotes(e.target.value)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = `${Math.min(Math.max(e.target.scrollHeight, 80), 360)}px`
+                  }}
                   placeholder="Recruiter notes, conversation points, portfolio used..."
-                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed"
+                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed overflow-y-auto"
                 />
               </div>
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-4 border-t border-zinc-900 flex items-center justify-between gap-3">
+            <div className="pt-4 border-t border-zinc-900 flex items-center justify-between gap-3 shrink-0">
               <div className="text-[11px] text-zinc-500">
                 <kbd className="px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 font-mono text-zinc-400">
                   ⌘ + ↵

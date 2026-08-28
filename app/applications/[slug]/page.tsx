@@ -27,25 +27,26 @@ import { AddTimelineEventModal } from "@/components/ui/add-timeline-event-modal"
 export const dynamic = 'force-dynamic'
 
 function StatusBadge({ status }: { status: ApplicationStatus }) {
-  const statusConfig: Record<ApplicationStatus, string> = {
-    SAVED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
-    APPLIED: 'text-blue-400 border-blue-500/30 bg-blue-950/40',
-    CONTACTED: 'text-purple-400 border-purple-500/30 bg-purple-950/40',
-    SCREENING: 'text-amber-400 border-amber-500/30 bg-amber-950/40',
-    INTERVIEW: 'text-orange-400 border-orange-500/30 bg-orange-950/40',
-    ASSIGNMENT: 'text-indigo-400 border-indigo-500/30 bg-indigo-950/40',
-    OFFER: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40',
-    ACCEPTED: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40',
-    REJECTED: 'text-rose-400 border-rose-500/30 bg-rose-950/40',
-    GHOSTED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
-    WITHDRAWN: 'text-zinc-500 border-zinc-800 bg-zinc-900',
+  const statusConfig: Record<ApplicationStatus, { badge: string; dot: string }> = {
+    SAVED: { badge: 'text-zinc-400 border-zinc-800 bg-zinc-900', dot: 'bg-zinc-500' },
+    APPLIED: { badge: 'text-blue-400 border-blue-500/30 bg-blue-950/40', dot: 'bg-blue-400' },
+    CONTACTED: { badge: 'text-purple-400 border-purple-500/30 bg-purple-950/40', dot: 'bg-purple-400' },
+    SCREENING: { badge: 'text-amber-400 border-amber-500/30 bg-amber-950/40', dot: 'bg-amber-400' },
+    INTERVIEW: { badge: 'text-orange-400 border-orange-500/30 bg-orange-950/40', dot: 'bg-orange-400' },
+    ASSIGNMENT: { badge: 'text-indigo-400 border-indigo-500/30 bg-indigo-950/40', dot: 'bg-indigo-400' },
+    OFFER: { badge: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40', dot: 'bg-emerald-400' },
+    ACCEPTED: { badge: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40', dot: 'bg-emerald-400' },
+    REJECTED: { badge: 'text-rose-400 border-rose-500/30 bg-rose-950/40', dot: 'bg-rose-400' },
+    GHOSTED: { badge: 'text-zinc-400 border-zinc-800 bg-zinc-900', dot: 'bg-zinc-500' },
+    WITHDRAWN: { badge: 'text-zinc-500 border-zinc-800 bg-zinc-900', dot: 'bg-zinc-500' },
   }
 
   const config = statusConfig[status] || statusConfig.SAVED
 
   return (
-    <span className={`text-[10px] uppercase tracking-wider font-semibold px-3 py-1 border rounded-full ${config}`}>
-      {status.replace('_', ' ')}
+    <span className={`inline-flex items-center justify-center gap-2 h-8 px-3 text-xs font-semibold uppercase tracking-wider border rounded-xl ${config.badge}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+      <span>{status.replace('_', ' ')}</span>
     </span>
   )
 }

@@ -17,12 +17,28 @@ import {
   FileText,
   Link as LinkIcon,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileCode2
 } from 'lucide-react'
 import { createApplication } from '@/app/actions'
 import { CompanyLogo } from '@/components/ui/avatars'
 import { LocationInput } from '@/components/ui/location-input'
 import { RoleInput } from '@/components/ui/role-input'
+
+function InternshipIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg
+      stroke="currentColor"
+      fill="currentColor"
+      strokeWidth="0"
+      viewBox="0 0 256 256"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v80a8,8,0,0,0,16,0V75.1L73.59,86.29a64,64,0,0,0,20.65,88.05c-18,7.06-33.56,19.83-44.94,37.29a8,8,0,1,0,13.4,8.74C77.77,197.25,101.57,184,128,184s50.23,13.25,65.3,36.37a8,8,0,0,0,13.4-8.74c-11.38-17.46-27-30.23-44.94-37.29a64,64,0,0,0,20.65-88l44.12-14.7a8,8,0,0,0,0-15.18ZM176,120A48,48,0,1,1,89.35,91.55l36.12,12a8,8,0,0,0,5.06,0l36.12-12A47.89,47.89,0,0,1,176,120Z" />
+    </svg>
+  )
+}
 
 const STATUS_OPTIONS = [
   {
@@ -70,11 +86,9 @@ const STATUS_OPTIONS = [
 ]
 
 const JOB_TYPE_OPTIONS = [
-  { value: 'FULL_TIME', label: 'Full Time' },
-  { value: 'INTERNSHIP', label: 'Internship' },
-  { value: 'CONTRACT', label: 'Contract' },
-  { value: 'FREELANCE', label: 'Freelance' },
-  { value: 'PART_TIME', label: 'Part Time' },
+  { value: 'FULL_TIME', label: 'Full Time', icon: Briefcase },
+  { value: 'INTERNSHIP', label: 'Internship', isInternship: true },
+  { value: 'CONTRACT', label: 'Contract', icon: FileCode2 },
 ]
 
 const WORKPLACE_OPTIONS = [
@@ -409,17 +423,30 @@ export default function NewApplicationPage() {
                 <label className="block text-xs font-medium text-zinc-300">
                   Job Type <span className="text-red-400">*</span>
                 </label>
-                <select
-                  value={jobType}
-                  onChange={(e) => setJobType(e.target.value)}
-                  className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-3 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer"
-                >
-                  {JOB_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-3 gap-2">
+                  {JOB_TYPE_OPTIONS.map((opt) => {
+                    const isSelected = jobType === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setJobType(opt.value)}
+                        className={`inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl text-xs font-medium text-center transition-all border cursor-pointer ${
+                          isSelected
+                            ? 'bg-zinc-100 text-black border-white font-semibold shadow-xs'
+                            : 'bg-[#0c0c0e] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
+                        }`}
+                      >
+                        {opt.isInternship ? (
+                          <InternshipIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-black' : 'text-zinc-400'}`} />
+                        ) : (
+                          opt.icon && <opt.icon className={`w-3.5 h-3.5 ${isSelected ? 'text-black' : 'text-zinc-400'}`} />
+                        )}
+                        <span>{opt.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Workplace Type (Mandatory) */}

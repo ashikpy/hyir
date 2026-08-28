@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ArrowUpDown, Search } from 'lucide-react'
 import { ImportExportModal } from './import-export-modal'
-import { HyrLogo } from './hyr-logo'
+import { HyirLogo } from './hyr-logo'
 import { getTriageCount } from '@/app/actions'
 
 const items = [
@@ -44,9 +44,9 @@ export function Nav() {
     <>
       <nav className="flex flex-col gap-1 w-48 shrink-0">
         <div className="mb-6 px-3 flex items-center gap-2.5">
-          <HyrLogo className="w-5 h-5 text-white" />
+          <HyirLogo className="w-5 h-5 text-white" />
           <h2 className="text-lg font-semibold tracking-tight text-white">
-            Hyr
+            Hyir
           </h2>
         </div>
 

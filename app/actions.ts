@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { ApplicationStatus, TimelineEventType } from '@prisma/client'
+import { ApplicationStatus, TimelineEventType, JobType, WorkplaceType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
 export async function createApplication(formData: FormData) {
@@ -73,6 +73,9 @@ export async function updateApplication(id: string, formData: FormData) {
   const companyName = formData.get('companyName') as string
   const roleTitle = formData.get('roleTitle') as string
   const status = formData.get('status') as ApplicationStatus
+  const jobType = (formData.get('jobType') as string) || 'FULL_TIME'
+  const workplaceType = (formData.get('workplaceType') as string) || 'REMOTE'
+  const location = formData.get('location') as string
   const dateApplied = formData.get('dateApplied') as string
   const applicationUrl = formData.get('applicationUrl') as string
   const salary = formData.get('salary') as string
@@ -97,6 +100,9 @@ export async function updateApplication(id: string, formData: FormData) {
       companyName,
       roleTitle,
       status: status || 'SAVED',
+      jobType: (jobType as JobType),
+      workplaceType: (workplaceType as WorkplaceType),
+      location: location || null,
       dateApplied: dateApplied ? new Date(dateApplied) : null,
       applicationUrl: applicationUrl || null,
       salary: salary || null,
@@ -126,11 +132,17 @@ export async function quickUpdateTriageField(
     salary?: string | null
     notes?: string | null
     status?: ApplicationStatus
+    dateApplied?: string | Date | null
   }
 ) {
+  const updateData: any = { ...data }
+  if ('dateApplied' in data) {
+    updateData.dateApplied = data.dateApplied ? new Date(data.dateApplied) : null
+  }
+
   const updated = await prisma.application.update({
     where: { id },
-    data,
+    data: updateData,
   })
 
   revalidatePath('/')
@@ -472,6 +484,7 @@ export async function getTriageCount(): Promise<number> {
       salary: true,
       contactName: true,
       notes: true,
+      dateApplied: true,
       nextFollowUpDate: true,
     }
   })
@@ -490,6 +503,7 @@ export async function getTriageCount(): Promise<number> {
     const hasIssue =
       isDraft ||
       !app.applicationUrl ||
+      (!app.dateApplied && !isDraft) ||
       isOverdue ||
       (!app.contactName && !isDraft) ||
       !app.salary ||

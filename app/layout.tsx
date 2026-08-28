@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hyr · Job Application Command Center",
+  title: "Hyir · Job Application Command Center",
   description: "Personal job application tracking and pipeline command center",
 };
 

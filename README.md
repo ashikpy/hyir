@@ -1,4 +1,4 @@
-# Hyr · Job Application Command Center
+# Hyir · Job Application Command Center
 
 A fast, high-contrast, keyboard-first job hunt and application tracking system built for modern designers and engineers.
 
