@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { format, isPast, isToday } from 'date-fns'
-import { Search, Filter, ArrowUpDown, Check, X } from 'lucide-react'
+import { Search, Filter, ArrowUpDown, Check, X, Briefcase, FileCode2 } from 'lucide-react'
 import { ApplicationStatus } from '@prisma/client'
 import { CompanyLogo } from '@/components/ui/avatars'
 
@@ -22,6 +22,55 @@ interface ApplicationItem {
   applicationUrl: string | null
 }
 
+function InternshipIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      stroke="currentColor"
+      fill="currentColor"
+      strokeWidth="0"
+      viewBox="0 0 256 256"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v80a8,8,0,0,0,16,0V75.1L73.59,86.29a64,64,0,0,0,20.65,88.05c-18,7.06-33.56,19.83-44.94,37.29a8,8,0,1,0,13.4,8.74C77.77,197.25,101.57,184,128,184s50.23,13.25,65.3,36.37a8,8,0,0,0,13.4-8.74c-11.38-17.46-27-30.23-44.94-37.29a64,64,0,0,0,20.65-88l44.12-14.7a8,8,0,0,0,0-15.18ZM176,120A48,48,0,1,1,89.35,91.55l36.12,12a8,8,0,0,0,5.06,0l36.12-12A47.89,47.89,0,0,1,176,120Z" />
+    </svg>
+  )
+}
+
+function JobTypeBadge({ type }: { type: string }) {
+  if (type === 'INTERNSHIP') {
+    return (
+      <div 
+        title="Internship" 
+        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-950/40 text-indigo-300 border border-indigo-500/20 shadow-xs"
+      >
+        <InternshipIcon className="w-4 h-4" />
+      </div>
+    )
+  }
+  
+  if (type === 'CONTRACT' || type === 'FREELANCE') {
+    return (
+      <div 
+        title={type.replace('_', ' ')} 
+        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-950/40 text-amber-300 border border-amber-500/20 shadow-xs"
+      >
+        <FileCode2 className="w-3.5 h-3.5" />
+      </div>
+    )
+  }
+
+  // Full Time
+  return (
+    <div 
+      title="Full Time Job" 
+      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-900 text-zinc-300 border border-zinc-800 shadow-xs"
+    >
+      <Briefcase className="w-3.5 h-3.5 text-zinc-400" />
+    </div>
+  )
+}
+
 function StatusBadge({ status }: { status: ApplicationStatus }) {
   const statusConfig: Record<ApplicationStatus, string> = {
     SAVED: 'text-zinc-400 border-zinc-800 bg-zinc-900',
@@ -32,7 +81,7 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
     ASSIGNMENT: 'text-indigo-400 border-indigo-400/20 bg-indigo-950/40',
     OFFER: 'text-emerald-400 border-emerald-400/20 bg-emerald-950/40',
     ACCEPTED: 'text-emerald-400 border-emerald-400/20 bg-emerald-950/40',
-    REJECTED: 'text-red-400 border-red-400/20 bg-red-950/40',
+    REJECTED: 'text-rose-400 border-rose-400/20 bg-rose-950/40',
     GHOSTED: 'text-zinc-500 border-zinc-800 bg-zinc-900',
     WITHDRAWN: 'text-zinc-500 border-zinc-800 bg-zinc-900',
   }
@@ -151,7 +200,7 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                     setStatusFilter(st)
                     setIsFilterOpen(false)
                   }}
-                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-zinc-300 hover:bg-zinc-800/80 flex items-center justify-between transition-colors"
+                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-zinc-300 hover:bg-zinc-800/80 flex items-center justify-between transition-colors cursor-pointer"
                 >
                   <span>{st === 'ALL' ? 'All Statuses' : st.replace('_', ' ')}</span>
                   {statusFilter === st && <Check className="w-3.5 h-3.5 text-blue-400" />}
@@ -178,7 +227,7 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                   </div>
                 </th>
                 <th className="px-5 py-3.5">Status</th>
-                <th className="px-5 py-3.5">Type</th>
+                <th className="px-5 py-3.5 text-center">Type</th>
                 <th className="px-5 py-3.5">Location</th>
                 <th className="px-5 py-3.5">Contact</th>
                 <th
@@ -219,12 +268,12 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
                     <StatusBadge status={app.status} />
                   </td>
 
-                  {/* 3. Type */}
-                  <td className="px-5 py-3.5 text-zinc-300 text-xs font-medium">
-                    {app.jobType.replace('_', ' ')}
+                  {/* 3. Type (Icon Badge) */}
+                  <td className="px-5 py-3.5 text-center">
+                    <JobTypeBadge type={app.jobType} />
                   </td>
 
-                  {/* 4. Location (Separate column) */}
+                  {/* 4. Location */}
                   <td className="px-5 py-3.5 text-xs text-zinc-300">
                     {app.location || (
                       <span className="text-zinc-500">{app.workplaceType}</span>
@@ -252,9 +301,8 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
 
               {filteredApplications.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-zinc-500">
-                    <p className="text-sm font-medium text-zinc-300">No applications match your search</p>
-                    <p className="text-xs text-zinc-600 mt-1">Try clearing filters or search keywords</p>
+                  <td colSpan={7} className="px-5 py-12 text-center text-zinc-500">
+                    No applications found matching your criteria.
                   </td>
                 </tr>
               )}
