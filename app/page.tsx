@@ -14,7 +14,7 @@ async function getDashboardData() {
   const activeApps = await prisma.application.count({
     where: {
       status: {
-        in: ["APPLIED", "CONTACTED", "SCREENING", "INTERVIEW", "ASSIGNMENT"],
+        in: ["APPLIED", "CONTACTED", "INTERVIEW", "ASSIGNMENT"],
       },
     },
   });
@@ -23,6 +23,9 @@ async function getDashboardData() {
   });
   const offers = await prisma.application.count({
     where: { status: "OFFER" },
+  });
+  const rejections = await prisma.application.count({
+    where: { status: "REJECTED" },
   });
   const recentApps = await prisma.application.findMany({
     take: 5,
@@ -48,17 +51,20 @@ async function getDashboardData() {
     activeApps,
     interviews,
     offers,
+    rejections,
     recentApps,
     followUps,
     statusCounts,
   };
 }
 
-function MetricBlock({ label, value }: { label: string; value: number }) {
+function MetricBlock({ label, value, highlightColor }: { label: string; value: number; highlightColor?: string }) {
   return (
     <div className="flex flex-col py-6 border-b border-zinc-900">
-      <span className="text-4xl font-light tracking-tight mb-2">{value}</span>
-      <span className="text-sm font-medium text-zinc-500 uppercase tracking-widest">
+      <span className={`text-4xl font-light tracking-tight mb-2 ${highlightColor || 'text-white'}`}>
+        {value}
+      </span>
+      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
         {label}
       </span>
     </div>
@@ -68,14 +74,14 @@ function MetricBlock({ label, value }: { label: string; value: number }) {
 function StatusBadge({ status }: { status: ApplicationStatus }) {
   const statusConfig: Record<ApplicationStatus, string> = {
     SAVED: "text-zinc-500 border-zinc-800",
-    APPLIED: "text-blue-400 border-blue-400/20",
-    CONTACTED: "text-purple-400 border-purple-400/20",
-    SCREENING: "text-amber-400 border-amber-400/20",
-    INTERVIEW: "text-orange-400 border-orange-400/20",
-    ASSIGNMENT: "text-indigo-400 border-indigo-400/20",
-    OFFER: "text-emerald-400 border-emerald-400/20 bg-emerald-400/10",
-    ACCEPTED: "text-emerald-500 border-emerald-500/20 bg-emerald-500/10",
-    REJECTED: "text-red-400 border-red-400/20",
+    APPLIED: "text-blue-400 border-blue-400/20 bg-blue-950/30",
+    CONTACTED: "text-purple-400 border-purple-400/20 bg-purple-950/30",
+    SCREENING: "text-amber-400 border-amber-400/20 bg-amber-950/30",
+    INTERVIEW: "text-orange-400 border-orange-400/20 bg-orange-950/30",
+    ASSIGNMENT: "text-indigo-400 border-indigo-400/20 bg-indigo-950/30",
+    OFFER: "text-emerald-400 border-emerald-400/20 bg-emerald-950/30",
+    ACCEPTED: "text-emerald-500 border-emerald-500/20 bg-emerald-950/30",
+    REJECTED: "text-rose-400 border-rose-400/20 bg-rose-950/30",
     GHOSTED: "text-zinc-500 border-zinc-800",
     WITHDRAWN: "text-zinc-500 border-zinc-800",
   };
@@ -84,7 +90,7 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
 
   return (
     <span
-      className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 border rounded-full ${config}`}
+      className={`text-[10px] uppercase tracking-wider font-semibold px-2.5 py-0.5 border rounded-full ${config}`}
     >
       {status.replace("_", " ")}
     </span>
@@ -95,13 +101,12 @@ export default async function Dashboard() {
   const data = await getDashboardData();
 
   const pipelineOrder: ApplicationStatus[] = [
-    "SAVED",
     "APPLIED",
     "CONTACTED",
-    "SCREENING",
     "INTERVIEW",
-    "ASSIGNMENT",
     "OFFER",
+    "REJECTED",
+    "GHOSTED",
   ];
   const pipelineData = pipelineOrder.map((status) => ({
     status,
@@ -172,11 +177,12 @@ export default async function Dashboard() {
       </header>
 
       {/* Metrics Row */}
-      <section className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-x-12">
+      <section className="relative z-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-8 gap-y-4">
         <MetricBlock label="Total Applied" value={data.totalApps} />
         <MetricBlock label="Active" value={data.activeApps} />
         <MetricBlock label="Interviews" value={data.interviews} />
-        <MetricBlock label="Offers" value={data.offers} />
+        <MetricBlock label="Offers" value={data.offers} highlightColor={data.offers > 0 ? "text-emerald-400" : undefined} />
+        <MetricBlock label="Rejections" value={data.rejections} highlightColor={data.rejections > 0 ? "text-rose-400/90" : undefined} />
       </section>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-16">
