@@ -11,13 +11,9 @@ import {
   DollarSign,
   User,
   Clock,
-  Zap,
-  Layers,
-  Archive,
   Search,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Inbox
 } from 'lucide-react'
 
@@ -40,46 +36,27 @@ export interface KanbanApplication {
   nextFollowUpDate: Date | string | null
 }
 
-type ViewMode = 'ACTIVE' | 'ALL' | 'ARCHIVE'
-
 interface StageConfig {
   status: ApplicationStatus
   label: string
   countColor: string
 }
 
-const ACTIVE_STAGES: StageConfig[] = [
+const PIPELINE_STAGES: StageConfig[] = [
   { status: 'CONTACTED', label: 'Contacted', countColor: 'text-purple-400' },
   { status: 'SCREENING', label: 'Screening', countColor: 'text-amber-400' },
   { status: 'INTERVIEW', label: 'Interview', countColor: 'text-orange-400' },
-  { status: 'ASSIGNMENT', label: 'Assignment', countColor: 'text-indigo-400' },
   { status: 'OFFER', label: 'Offer', countColor: 'text-emerald-400' },
-]
-
-const ALL_STAGES: StageConfig[] = [
-  { status: 'SAVED', label: 'Saved', countColor: 'text-zinc-400' },
-  { status: 'APPLIED', label: 'Applied', countColor: 'text-blue-400' },
-  { status: 'CONTACTED', label: 'Contacted', countColor: 'text-purple-400' },
-  { status: 'SCREENING', label: 'Screening', countColor: 'text-amber-400' },
-  { status: 'INTERVIEW', label: 'Interview', countColor: 'text-orange-400' },
-  { status: 'ASSIGNMENT', label: 'Assignment', countColor: 'text-indigo-400' },
-  { status: 'OFFER', label: 'Offer', countColor: 'text-emerald-400' },
-  { status: 'REJECTED', label: 'Rejected', countColor: 'text-red-400' },
-]
-
-const ARCHIVE_STAGES: StageConfig[] = [
   { status: 'REJECTED', label: 'Rejected', countColor: 'text-red-400' },
   { status: 'GHOSTED', label: 'Ghosted', countColor: 'text-zinc-500' },
-  { status: 'WITHDRAWN', label: 'Withdrawn', countColor: 'text-zinc-500' },
 ]
 
 export function KanbanBoard({ initialApplications }: { initialApplications: KanbanApplication[] }) {
   const [applications, setApplications] = useState<KanbanApplication[]>(initialApplications)
-  const [viewMode, setViewMode] = useState<ViewMode>('ACTIVE')
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [activeDropColumn, setActiveDropColumn] = useState<ApplicationStatus | null>(null)
 
-  // Applied drawer state in ACTIVE mode
+  // Applied drawer state
   const [isAppliedDrawerOpen, setIsAppliedDrawerOpen] = useState(true)
   const [appliedSearch, setAppliedSearch] = useState('')
 
@@ -110,24 +87,7 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
     return map
   }, [applications])
 
-  // Counts for pills
-  const activeCount = useMemo(() => {
-    return (
-      groupedApps.CONTACTED.length +
-      groupedApps.SCREENING.length +
-      groupedApps.INTERVIEW.length +
-      groupedApps.ASSIGNMENT.length +
-      groupedApps.OFFER.length
-    )
-  }, [groupedApps])
-
   const appliedCount = groupedApps.APPLIED.length
-
-  const currentStages = useMemo(() => {
-    if (viewMode === 'ACTIVE') return ACTIVE_STAGES
-    if (viewMode === 'ARCHIVE') return ARCHIVE_STAGES
-    return ALL_STAGES
-  }, [viewMode])
 
   // Filtered applied queue in drawer
   const filteredAppliedQueue = useMemo(() => {
@@ -195,66 +155,9 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
 
   return (
     <div className="flex flex-col flex-1 min-h-0 space-y-4">
-      {/* Top View Mode Switcher Toolbar */}
-      <div className="flex items-center justify-between gap-4 pb-2 border-b border-zinc-900 shrink-0">
-        {/* Segmented Mode Switcher */}
-        <div className="flex items-center gap-1.5 p-1 bg-zinc-950/80 border border-zinc-800/80 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setViewMode('ACTIVE')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              viewMode === 'ACTIVE'
-                ? 'bg-zinc-100 text-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>Active Pipeline</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                viewMode === 'ACTIVE' ? 'bg-black/10 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
-              }`}
-            >
-              {activeCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setViewMode('ALL')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              viewMode === 'ALL'
-                ? 'bg-zinc-100 text-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Full Funnel</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                viewMode === 'ALL' ? 'bg-black/10 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
-              }`}
-            >
-              {applications.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setViewMode('ARCHIVE')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              viewMode === 'ARCHIVE'
-                ? 'bg-zinc-100 text-black shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
-            }`}
-          >
-            <Archive className="w-3.5 h-3.5" />
-            <span>Archive</span>
-          </button>
-        </div>
-
-        {/* In ACTIVE mode: Applied Queue toggle indicator / Drop Target */}
-        {viewMode === 'ACTIVE' && (
+      {/* Top Toolbar: Applied Drawer Toggle */}
+      <div className="flex items-center justify-between pb-2 border-b border-zinc-900 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setIsAppliedDrawerOpen(!isAppliedDrawerOpen)}
@@ -266,38 +169,42 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
             onDragEnter={(e) => handleDragOver(e, 'APPLIED')}
             onDragLeave={(e) => handleDragLeave(e, 'APPLIED')}
             onDrop={(e) => handleDrop(e, 'APPLIED')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
               activeDropColumn === 'APPLIED'
                 ? 'border-blue-500 bg-blue-950/40 text-blue-200 ring-2 ring-blue-500/40'
                 : isAppliedDrawerOpen
-                ? 'border-blue-500/40 bg-blue-950/20 text-blue-300'
-                : 'border-zinc-800 bg-zinc-950/60 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                ? 'border-zinc-800 bg-zinc-900/80 text-zinc-200'
+                : 'border-zinc-800/80 bg-zinc-950/60 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Inbox className="w-3.5 h-3.5" />
+            <Inbox className="w-3.5 h-3.5 text-blue-400" />
             <span>Applied Queue ({appliedCount})</span>
-            {isAppliedDrawerOpen ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {isAppliedDrawerOpen ? <ChevronLeft className="w-3.5 h-3.5 text-zinc-400" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />}
           </button>
-        )}
+        </div>
+
+        <div className="text-xs text-zinc-500">
+          Total tracked: <span className="text-zinc-300 font-medium">{applications.length}</span>
+        </div>
       </div>
 
       {/* Main Board Container */}
       <div className="flex gap-4 flex-1 min-h-0 items-start overflow-hidden">
-        {/* ================= LEFT APPLIED QUEUE DRAWER (In ACTIVE mode) ================= */}
-        {viewMode === 'ACTIVE' && isAppliedDrawerOpen && (
+        {/* ================= LEFT APPLIED QUEUE DRAWER ================= */}
+        {isAppliedDrawerOpen && (
           <div
             onDragOver={(e) => handleDragOver(e, 'APPLIED')}
             onDragEnter={(e) => handleDragOver(e, 'APPLIED')}
             onDragLeave={(e) => handleDragLeave(e, 'APPLIED')}
             onDrop={(e) => handleDrop(e, 'APPLIED')}
-            className={`w-[300px] shrink-0 rounded-2xl bg-zinc-950/60 border p-3 flex flex-col h-[calc(100vh-250px)] animate-in fade-in slide-in-from-left-4 duration-150 transition-all ${
+            className={`w-[290px] shrink-0 rounded-2xl bg-zinc-950/60 border p-3 flex flex-col h-[calc(100vh-250px)] animate-in fade-in slide-in-from-left-4 duration-150 transition-all ${
               activeDropColumn === 'APPLIED'
                 ? 'border-blue-500/60 bg-blue-950/20 ring-2 ring-blue-500/30'
                 : 'border-zinc-900'
             }`}
           >
             {/* Drawer Header */}
-            <div className="flex items-center justify-between mb-2 px-1">
+            <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
                 <Inbox className="w-4 h-4 text-blue-400" />
                 <h3 className="text-xs uppercase tracking-wider font-semibold text-zinc-300">
@@ -308,10 +215,6 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
                 {appliedCount}
               </span>
             </div>
-
-            <p className="text-[11px] text-zinc-500 px-1 mb-3">
-              Drag candidates into active stages as recruiters reply.
-            </p>
 
             {/* In-drawer Search */}
             <div className="relative mb-3">
@@ -383,9 +286,9 @@ export function KanbanBoard({ initialApplications }: { initialApplications: Kanb
           </div>
         )}
 
-        {/* ================= COLUMNS (ACTIVE / ALL / ARCHIVE) ================= */}
+        {/* ================= COLUMNS (CONTACTED, SCREENING, INTERVIEW, OFFER, REJECTED, GHOSTED) ================= */}
         <div className="flex gap-4 overflow-x-auto pb-6 flex-1 items-start select-none scrollbar-thin h-[calc(100vh-250px)]">
-          {currentStages.map((stage) => {
+          {PIPELINE_STAGES.map((stage) => {
             const apps = groupedApps[stage.status] || []
             const isHovered = activeDropColumn === stage.status
 
