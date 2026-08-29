@@ -3,10 +3,14 @@ import { KanbanBoard, KanbanApplication } from "@/components/ui/kanban-board"
 import { AddApplicationButton } from "@/components/ui/add-app-button"
 import { Plus } from "lucide-react"
 
+import { requireUser } from "@/lib/auth-helpers"
+
 export const dynamic = 'force-dynamic'
 
 export default async function PipelinePage() {
+  const user = await requireUser()
   const applications = await prisma.application.findMany({
+    where: { userId: user.id },
     select: {
       id: true,
       slug: true,

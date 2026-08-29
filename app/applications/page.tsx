@@ -4,10 +4,14 @@ import { AddApplicationButton } from "@/components/ui/add-app-button"
 import { ImportExportButtons } from "@/components/ui/import-export-button"
 import { ApplicationsTable } from "@/components/ui/applications-table"
 
+import { requireUser } from "@/lib/auth-helpers"
+
 export const dynamic = 'force-dynamic'
 
 export default async function ApplicationsPage() {
+  const user = await requireUser()
   const applications = await prisma.application.findMany({
+    where: { userId: user.id },
     orderBy: { updatedAt: 'desc' }
   })
 

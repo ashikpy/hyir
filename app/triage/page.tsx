@@ -2,10 +2,14 @@ import { prisma } from '@/lib/prisma'
 import { TriageView, TriageApp } from '@/components/ui/triage-view'
 import { Inbox } from 'lucide-react'
 
+import { requireUser } from '@/lib/auth-helpers'
+
 export const dynamic = 'force-dynamic'
 
 export default async function TriagePage() {
+  const user = await requireUser()
   const applications = await prisma.application.findMany({
+    where: { userId: user.id },
     select: {
       id: true,
       slug: true,

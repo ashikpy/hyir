@@ -3,11 +3,15 @@ import { format, isPast, isToday, startOfDay } from "date-fns"
 import Link from "next/link"
 import { Clock, CheckCircle2, ArrowRight } from "lucide-react"
 
+import { requireUser } from "@/lib/auth-helpers"
+
 export const dynamic = 'force-dynamic'
 
 export default async function FollowUpsPage() {
+  const user = await requireUser()
   const applications = await prisma.application.findMany({
     where: {
+      userId: user.id,
       nextFollowUpDate: { not: null },
       status: { notIn: ['REJECTED', 'ACCEPTED', 'WITHDRAWN', 'GHOSTED'] }
     },

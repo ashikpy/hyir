@@ -26,6 +26,8 @@ import { AddTimelineEventModal } from "@/components/ui/add-timeline-event-modal"
 import { StatusDropdown } from "@/components/ui/status-dropdown"
 import { EditableNotes } from "@/components/ui/editable-notes"
 
+import { requireUser } from "@/lib/auth-helpers"
+
 export const dynamic = 'force-dynamic'
 
 function formatEventType(type: TimelineEventType | string, description?: string | null): string {
@@ -49,6 +51,7 @@ function formatEventType(type: TimelineEventType | string, description?: string 
 }
 
 export default async function ApplicationDetailPage(props: { params: Promise<{ slug: string }> }) {
+  const user = await requireUser();
   const params = await props.params;
   const application = await prisma.application.findUnique({
     where: { slug: params.slug },
@@ -59,7 +62,7 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
     }
   })
 
-  if (!application) {
+  if (!application || application.userId !== user.id) {
     notFound()
   }
 

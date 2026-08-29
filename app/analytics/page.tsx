@@ -1,9 +1,14 @@
 import { prisma } from "@/lib/prisma"
 
+import { requireUser } from "@/lib/auth-helpers"
+
 export const dynamic = 'force-dynamic'
 
 export default async function AnalyticsPage() {
-  const applications = await prisma.application.findMany()
+  const user = await requireUser()
+  const applications = await prisma.application.findMany({
+    where: { userId: user.id }
+  })
 
   const total = applications.length
 

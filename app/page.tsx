@@ -5,34 +5,40 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/avatars";
 import SideRays from "@/components/ui/side-rays";
+import { requireUser } from "@/lib/auth-helpers";
 
 // Ensure dynamic rendering to always fetch latest data
 export const dynamic = "force-dynamic";
 
-async function getDashboardData() {
-  const totalApps = await prisma.application.count();
+async function getDashboardData(userId: string) {
+  const totalApps = await prisma.application.count({
+    where: { userId },
+  });
   const activeApps = await prisma.application.count({
     where: {
+      userId,
       status: {
         in: ["APPLIED", "CONTACTED", "INTERVIEW", "ASSIGNMENT"],
       },
     },
   });
   const interviews = await prisma.application.count({
-    where: { status: "INTERVIEW" },
+    where: { userId, status: "INTERVIEW" },
   });
   const offers = await prisma.application.count({
-    where: { status: "OFFER" },
+    where: { userId, status: "OFFER" },
   });
   const rejections = await prisma.application.count({
-    where: { status: "REJECTED" },
+    where: { userId, status: "REJECTED" },
   });
   const recentApps = await prisma.application.findMany({
+    where: { userId },
     take: 5,
     orderBy: { createdAt: "desc" },
   });
   const followUps = await prisma.application.findMany({
     where: {
+      userId,
       nextFollowUpDate: { not: null },
       status: { notIn: ["REJECTED", "ACCEPTED", "WITHDRAWN", "GHOSTED"] },
     },
@@ -42,6 +48,7 @@ async function getDashboardData() {
 
   // Get triage statistics
   const allAppsForTriage = await prisma.application.findMany({
+    where: { userId },
     select: {
       status: true,
       applicationUrl: true,
@@ -132,7 +139,8 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
 }
 
 export default async function Dashboard() {
-  const data = await getDashboardData();
+  const user = await requireUser();
+  const data = await getDashboardData(user.id);
 
   // State detection:
   // 1. Urgent: Overdue follow-up tasks

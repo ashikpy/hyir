@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { ApplicationStatus, TimelineEventType, JobType, WorkplaceType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
+import { requireUser, getCurrentUser } from '@/lib/auth-helpers'
 
 export async function createApplication(formData: FormData) {
   const companyName = formData.get('companyName') as string
@@ -28,11 +29,7 @@ export async function createApplication(formData: FormData) {
     throw new Error('Company name and role title are required')
   }
 
-  // Get the first user since this is a personal tracker
-  const user = await prisma.user.findFirst()
-  if (!user) {
-    throw new Error('No user found in database. Please seed the database first.')
-  }
+  const user = await requireUser()
 
   const baseSlug = `${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${roleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
   const existing = await prisma.application.count({ where: { slug: { startsWith: baseSlug } } })
@@ -445,7 +442,9 @@ export async function deleteApplication(id: string) {
 }
 
 export async function exportApplicationsData() {
+  const user = await requireUser()
   const applications = await prisma.application.findMany({
+    where: { userId: user.id },
     include: {
       timelineEvents: {
         orderBy: { date: 'asc' }
@@ -514,15 +513,7 @@ export async function importApplicationsData(
   records: ImportPayloadRecord[],
   strategy: 'skip' | 'update' | 'create_new' = 'skip'
 ) {
-  let user = await prisma.user.findFirst()
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        email: 'user@example.com',
-        name: 'User'
-      }
-    })
-  }
+  const user = await requireUser()
 
   let imported = 0
   let updated = 0
@@ -665,7 +656,10 @@ export async function importApplicationsData(
 }
 
 export async function getSearchApplications() {
+  const user = await getCurrentUser()
+  if (!user) return []
   const applications = await prisma.application.findMany({
+    where: { userId: user.id },
     select: {
       id: true,
       slug: true,
@@ -684,7 +678,10 @@ export async function getSearchApplications() {
 }
 
 export async function getTriageCount(): Promise<number> {
+  const user = await getCurrentUser()
+  if (!user) return 0
   const apps = await prisma.application.findMany({
+    where: { userId: user.id },
     select: {
       status: true,
       applicationUrl: true,
