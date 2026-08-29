@@ -385,7 +385,7 @@ export default function NewApplicationPage() {
       {step === 2 && (
         <form ref={formRef} action={handleSubmit} className="space-y-8 animate-in fade-in duration-200">
           {/* Company Brand Header at Top of Step 2 */}
-          <div className="flex items-center justify-between gap-4 pb-2 border-b border-zinc-900">
+          <div className="flex items-center justify-between gap-6 pb-6 border-b border-zinc-900">
             <div className="flex items-center gap-4 min-w-0">
               <CompanyLogo 
                 name={companyName} 
@@ -402,11 +402,11 @@ export default function NewApplicationPage() {
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex flex-col items-end gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="text-xs text-zinc-400 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
+                className="text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer px-2.5 py-1 rounded-lg hover:bg-zinc-900/80 border border-transparent hover:border-zinc-800"
               >
                 Edit core info
               </button>
