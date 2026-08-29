@@ -384,8 +384,8 @@ export default function NewApplicationPage() {
       {/* ================= STEP 2 ================= */}
       {step === 2 && (
         <form ref={formRef} action={handleSubmit} className="space-y-8 animate-in fade-in duration-200">
-          {/* Company Brand Card at Top of Step 2 */}
-          <div className="p-6 rounded-2xl bg-zinc-950/60 border border-zinc-900 flex items-center justify-between gap-4">
+          {/* Company Brand Header at Top of Step 2 */}
+          <div className="flex items-center justify-between gap-4 pb-2 border-b border-zinc-900">
             <div className="flex items-center gap-4 min-w-0">
               <CompanyLogo 
                 name={companyName} 
@@ -393,23 +393,25 @@ export default function NewApplicationPage() {
                 className="w-14 h-14 rounded-2xl shrink-0" 
               />
               <div className="truncate">
-                <h2 className="text-2xl font-light tracking-tight text-white truncate">
+                <h2 className="text-2xl sm:text-3xl font-light tracking-tight text-white truncate">
                   {companyName}
                 </h2>
-                <div className="flex items-center gap-2.5 mt-1">
-                  <span className="text-sm font-medium text-zinc-300 truncate">{roleTitle}</span>
-                  <StatusPill status={status} />
-                </div>
+                <p className="text-sm font-medium text-zinc-400 truncate mt-0.5">
+                  {roleTitle}
+                </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="text-xs text-zinc-400 hover:text-white underline underline-offset-4 shrink-0 transition-colors cursor-pointer"
-            >
-              Edit core info
-            </button>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="text-xs text-zinc-400 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
+              >
+                Edit core info
+              </button>
+              <StatusPill status={status} />
+            </div>
           </div>
 
           <div className="space-y-6">
