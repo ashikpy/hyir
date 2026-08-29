@@ -644,15 +644,28 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
               {/* Contact Name & Email */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Recruiter Name</span>
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>Recruiter Name</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setFormContactName(formContactName === 'No Direct Contact' ? '' : 'No Direct Contact')}
+                      className={`text-[10px] px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                        formContactName === 'No Direct Contact'
+                          ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                          : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                      }`}
+                    >
+                      {formContactName === 'No Direct Contact' ? '✓ No Direct Contact' : 'No Direct Contact'}
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={formContactName}
                     onChange={(e) => setFormContactName(e.target.value)}
-                    placeholder="e.g. Sarah Jenkins"
+                    placeholder="e.g. Sarah Jenkins or No Direct Contact"
                     className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                   />
                 </div>

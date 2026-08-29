@@ -134,6 +134,7 @@ export default function NewApplicationPage() {
   const [location, setLocation] = useState('')
   const [dateApplied, setDateApplied] = useState(() => new Date().toISOString().split('T')[0])
   const [salary, setSalary] = useState('')
+  const [contactName, setContactName] = useState('')
   
   // Step 2 Optional details toggle
   const [showMoreOptional, setShowMoreOptional] = useState(false)
@@ -554,13 +555,28 @@ export default function NewApplicationPage() {
 
                     {/* Contact Name (Optional) */}
                     <div className="flex flex-col gap-2">
-                      <label className="block text-xs font-medium text-zinc-400">
-                        Contact / Recruiter Name (Optional)
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-medium text-zinc-400">
+                          Contact / Recruiter Name (Optional)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setContactName(contactName === 'No Direct Contact' ? '' : 'No Direct Contact')}
+                          className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                            contactName === 'No Direct Contact'
+                              ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                              : 'bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                          }`}
+                        >
+                          {contactName === 'No Direct Contact' ? '✓ No Direct Contact' : 'No Direct Contact'}
+                        </button>
+                      </div>
                       <input 
                         name="contactName"
                         type="text" 
-                        placeholder="e.g. Sarah Jenkins"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
+                        placeholder="e.g. Sarah Jenkins or No Direct Contact"
                         className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                       />
                     </div>

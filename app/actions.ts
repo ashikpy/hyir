@@ -126,7 +126,13 @@ export async function updateApplication(id: string, formData: FormData) {
     (contactName !== prevContactName || contactEmail !== prevContactEmail) &&
     (contactName || contactEmail)
   ) {
-    if (!prevContactName && !prevContactEmail) {
+    if (contactName?.toLowerCase() === 'no direct contact') {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Marked as No Direct Contact`
+      })
+    } else if (!prevContactName && !prevContactEmail) {
       timelineEventsToCreate.push({
         eventType: 'CUSTOM',
         date: now,
@@ -258,7 +264,13 @@ export async function quickUpdateTriageField(
     (newContactName !== prevContactName || newContactEmail !== prevContactEmail) &&
     (newContactName || newContactEmail)
   ) {
-    if (!prevContactName && !prevContactEmail) {
+    if (newContactName?.toLowerCase() === 'no direct contact') {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Marked as No Direct Contact`
+      })
+    } else if (!prevContactName && !prevContactEmail) {
       timelineEventsToCreate.push({
         eventType: 'CUSTOM',
         date: now,

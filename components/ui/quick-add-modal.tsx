@@ -10,6 +10,7 @@ export function QuickAddModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [salary, setSalary] = useState('')
+  const [contactName, setContactName] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function QuickAddModal() {
       await createApplication(formData)
       setIsOpen(false)
       setSalary('')
+      setContactName('')
       formRef.current?.reset()
     } catch (e) {
       console.error(e)
@@ -206,11 +208,26 @@ export function QuickAddModal() {
             <h3 className="text-xs font-semibold text-zinc-400">Recruiter / Contact</h3>
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <label className="text-xs text-zinc-400">Name</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-zinc-400">Name</label>
+                  <button
+                    type="button"
+                    onClick={() => setContactName(contactName === 'No Direct Contact' ? '' : 'No Direct Contact')}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                      contactName === 'No Direct Contact'
+                        ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                        : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                    }`}
+                  >
+                    {contactName === 'No Direct Contact' ? '✓ No Direct Contact' : 'No Direct Contact'}
+                  </button>
+                </div>
                 <input 
                   name="contactName"
                   type="text" 
-                  placeholder="Sarah Jenkins" 
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Sarah Jenkins or No Direct Contact" 
                   className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>

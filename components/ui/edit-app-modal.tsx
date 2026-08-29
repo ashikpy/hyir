@@ -90,6 +90,7 @@ export function EditApplicationModal({
   const [isPending, setIsPending] = useState(false)
   const [status, setStatus] = useState<ApplicationStatus>(application.status)
   const [salary, setSalary] = useState(application.salary || '')
+  const [contactName, setContactName] = useState(application.contactName || '')
   const [jobType, setJobType] = useState<string>(
     ['FULL_TIME', 'INTERNSHIP', 'CONTRACT'].includes(application.jobType)
       ? application.jobType
@@ -333,12 +334,26 @@ export function EditApplicationModal({
             <h3 className="text-xs font-semibold text-zinc-400">Recruiter / Contact</h3>
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <label className="text-xs text-zinc-400">Name</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-zinc-400">Name</label>
+                  <button
+                    type="button"
+                    onClick={() => setContactName(contactName === 'No Direct Contact' ? '' : 'No Direct Contact')}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                      contactName === 'No Direct Contact'
+                        ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                        : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                    }`}
+                  >
+                    {contactName === 'No Direct Contact' ? '✓ No Direct Contact' : 'No Direct Contact'}
+                  </button>
+                </div>
                 <input 
                   name="contactName"
                   type="text" 
-                  defaultValue={application.contactName || ''}
-                  placeholder="Contact Name"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Contact Name or No Direct Contact"
                   className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>
