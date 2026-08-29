@@ -61,7 +61,7 @@ export function CompanyLogo({
     <img
       src={logoUrl}
       alt={`${name} logo`}
-      className={`${className} rounded-md object-contain p-1 border border-zinc-800 bg-zinc-900 shrink-0`}
+      className={`${className} rounded-md object-contain p-1 border border-zinc-700/70 bg-zinc-800/90 shadow-xs shrink-0 [filter:drop-shadow(0_0_1px_rgba(255,255,255,0.35))]`}
       onError={() => setHasError(true)}
     />
   )
