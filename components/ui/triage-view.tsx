@@ -140,16 +140,20 @@ export function isAppStale(app: TriageApp): { isStale: boolean; daysInactive: nu
     return { isStale: false, daysInactive: 0, threshold: 0 }
   }
 
-  const threshold = app.status === 'APPLIED' ? 25 : 14
+  // Active / Demo threshold: 7 days for Applied, 5 days for Contacted
+  const threshold = app.status === 'APPLIED' ? 7 : 5
 
   const dates: number[] = []
   if (app.dateApplied) dates.push(new Date(app.dateApplied).getTime())
-  if (app.updatedAt) dates.push(new Date(app.updatedAt).getTime())
   if (app.timelineEvents && app.timelineEvents.length > 0) {
     dates.push(new Date(app.timelineEvents[0].date).getTime())
   }
 
-  const latestActivity = dates.length > 0 ? Math.max(...dates) : new Date(app.updatedAt).getTime()
+  const latestActivity = dates.length > 0 ? Math.max(...dates) : 0
+  if (!latestActivity) {
+    return { isStale: false, daysInactive: 0, threshold }
+  }
+
   const daysInactive = Math.max(0, Math.floor((Date.now() - latestActivity) / (1000 * 60 * 60 * 24)))
 
   return {
