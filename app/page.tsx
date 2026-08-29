@@ -205,14 +205,14 @@ export default async function Dashboard() {
         <MetricBlock label="Rejections" value={data.rejections} highlightColor={data.rejections > 0 ? "text-rose-400/90" : undefined} />
       </section>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-16">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-16 items-start">
         {/* Left Column: Recent Applications */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Recent Applications</h2>
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between h-7">
+            <h2 className="text-lg font-medium leading-none">Recent Applications</h2>
             <Link
               href="/applications"
-              className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+              className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors leading-none"
             >
               View all <ArrowRight className="w-3 h-3" />
             </Link>
@@ -281,18 +281,18 @@ export default async function Dashboard() {
         <div className="space-y-10">
           {/* Triage Insights */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium flex items-center gap-2">
-                <span>Triage</span>
+            <div className="flex items-center justify-between h-7">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-medium leading-none">Triage</h2>
                 {data.triageStats.total > 0 && (
-                  <span className="flex items-center justify-center min-w-[18px] h-4 px-1.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-4 px-1.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     {data.triageStats.total}
                   </span>
                 )}
-              </h2>
+              </div>
               <Link
                 href="/triage"
-                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors leading-none"
               >
                 Review all <ArrowRight className="w-3 h-3" />
               </Link>
@@ -385,11 +385,11 @@ export default async function Dashboard() {
 
           {/* Action Items */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium">Action Items</h2>
+            <div className="flex items-center justify-between h-7">
+              <h2 className="text-lg font-medium leading-none">Action Items</h2>
               <Link
                 href="/follow-ups"
-                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors leading-none"
               >
                 Manage <ArrowRight className="w-3 h-3" />
               </Link>
