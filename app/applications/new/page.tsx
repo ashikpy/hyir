@@ -572,13 +572,13 @@ export default function NewApplicationPage() {
               <button
                 type="button"
                 onClick={() => setShowMoreOptional(!showMoreOptional)}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-zinc-800/80 bg-zinc-900/30 hover:bg-zinc-900/60 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between p-4 pr-5 rounded-xl border border-zinc-800/80 bg-zinc-900/30 hover:bg-zinc-900/60 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
               >
                 <span>Optional Details (Salary, Contact Recruiter, Notes)</span>
                 {showMoreOptional ? (
-                  <ChevronUp className="w-4 h-4" />
+                  <ChevronUp className="w-4 h-4 text-zinc-400" />
                 ) : (
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-4 h-4 text-zinc-400" />
                 )}
               </button>
 
@@ -587,10 +587,18 @@ export default function NewApplicationPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {/* Target Salary (Optional) */}
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-medium text-zinc-400">
-                          Target Salary (Optional)
-                        </label>
+                      <label className="block text-xs font-medium text-zinc-300">
+                        Target Salary
+                      </label>
+                      <div className="relative">
+                        <input
+                          name="salary"
+                          type="text"
+                          value={salary}
+                          onChange={(e) => setSalary(e.target.value)}
+                          placeholder="e.g. $140k - $170k or ₹25 LPA"
+                          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-2.5 pl-3.5 pr-28 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
+                        />
                         <button
                           type="button"
                           onClick={() =>
@@ -598,10 +606,10 @@ export default function NewApplicationPage() {
                               salary === "Not Disclosed" ? "" : "Not Disclosed",
                             )
                           }
-                          className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                          className={`absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] font-medium px-2 py-1 rounded-lg border transition-all cursor-pointer ${
                             salary === "Not Disclosed"
-                              ? "bg-zinc-800 text-zinc-200 border-zinc-600"
-                              : "bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700"
+                              ? "bg-zinc-800 text-zinc-100 border-zinc-600"
+                              : "bg-zinc-800/60 text-zinc-400 border-zinc-700/60 hover:text-zinc-200 hover:border-zinc-600"
                           }`}
                         >
                           {salary === "Not Disclosed"
@@ -609,20 +617,12 @@ export default function NewApplicationPage() {
                             : "Not Disclosed"}
                         </button>
                       </div>
-                      <input
-                        name="salary"
-                        type="text"
-                        value={salary}
-                        onChange={(e) => setSalary(e.target.value)}
-                        placeholder="e.g. $140k - $170k / ₹25 LPA or Not Disclosed"
-                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-2.5 px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
-                      />
                     </div>
 
                     {/* Job Description URL (Optional) */}
                     <div className="flex flex-col gap-2">
-                      <label className="block text-xs font-medium text-zinc-400">
-                        Job Description Link (Optional)
+                      <label className="block text-xs font-medium text-zinc-300">
+                        Job Description Link
                       </label>
                       <input
                         name="jobDescriptionUrl"
@@ -634,10 +634,18 @@ export default function NewApplicationPage() {
 
                     {/* Contact Name (Optional) */}
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-medium text-zinc-400">
-                          Contact / Recruiter Name (Optional)
-                        </label>
+                      <label className="block text-xs font-medium text-zinc-300">
+                        Recruiter Name
+                      </label>
+                      <div className="relative">
+                        <input
+                          name="contactName"
+                          type="text"
+                          value={contactName}
+                          onChange={(e) => setContactName(e.target.value)}
+                          placeholder="e.g. Sarah Jenkins"
+                          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-2.5 pl-3.5 pr-32 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
+                        />
                         <button
                           type="button"
                           onClick={() =>
@@ -647,31 +655,23 @@ export default function NewApplicationPage() {
                                 : "No Direct Contact",
                             )
                           }
-                          className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                          className={`absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] font-medium px-2 py-1 rounded-lg border transition-all cursor-pointer ${
                             contactName === "No Direct Contact"
-                              ? "bg-zinc-800 text-zinc-200 border-zinc-600"
-                              : "bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700"
+                              ? "bg-zinc-800 text-zinc-100 border-zinc-600"
+                              : "bg-zinc-800/60 text-zinc-400 border-zinc-700/60 hover:text-zinc-200 hover:border-zinc-600"
                           }`}
                         >
                           {contactName === "No Direct Contact"
-                            ? "✓ No Direct Contact"
-                            : "No Direct Contact"}
+                            ? "✓ No Contact"
+                            : "No Contact"}
                         </button>
                       </div>
-                      <input
-                        name="contactName"
-                        type="text"
-                        value={contactName}
-                        onChange={(e) => setContactName(e.target.value)}
-                        placeholder="e.g. Sarah Jenkins or No Direct Contact"
-                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-2.5 px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
-                      />
                     </div>
 
                     {/* Contact Email (Optional) */}
                     <div className="flex flex-col gap-2">
-                      <label className="block text-xs font-medium text-zinc-400">
-                        Contact Email (Optional)
+                      <label className="block text-xs font-medium text-zinc-300">
+                        Recruiter Email
                       </label>
                       <input
                         name="contactEmail"
@@ -684,13 +684,13 @@ export default function NewApplicationPage() {
 
                   {/* Notes & Strategy (Optional) */}
                   <div className="flex flex-col gap-2">
-                    <label className="block text-xs font-medium text-zinc-400">
-                      Notes & Interview Strategy (Optional)
+                    <label className="block text-xs font-medium text-zinc-300">
+                      Notes & Strategy
                     </label>
                     <textarea
                       name="notes"
-                      rows={4}
-                      placeholder="Write down recruiter talking points, portfolio version used, or application notes..."
+                      rows={3}
+                      placeholder="Recruiter talking points, portfolio version used, or notes..."
                       className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-2.5 px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed"
                     />
                   </div>
