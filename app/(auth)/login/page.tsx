@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { signIn } from "@/lib/auth-client";
+import { signIn, signUp } from "@/lib/auth-client";
 import { HyirLogo } from "@/components/ui/hyr-logo";
 import SideRays from "@/components/ui/side-rays";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isEmailSignIn, setIsEmailSignIn] = useState(false);
+  const [isEmailFormOpen, setIsEmailFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -25,12 +26,15 @@ export default function LoginPage() {
         callbackURL: "/",
       });
     } catch (err: any) {
-      setError(err?.message || `Failed to sign in with ${provider}.`);
+      setError(
+        err?.message ||
+          `${provider.charAt(0).toUpperCase() + provider.slice(1)} OAuth is not configured yet. Add ${provider.toUpperCase()}_CLIENT_ID to your .env file.`
+      );
       setIsLoading(null);
     }
   }
 
-  async function handleEmailSignIn(e: React.FormEvent) {
+  async function handleEmailAuth(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || !password) {
       setError("Please enter both email and password.");
@@ -40,18 +44,34 @@ export default function LoginPage() {
     try {
       setIsLoading("email");
       setError("");
-      const res = await signIn.email({
-        email,
-        password,
-        callbackURL: "/",
-      });
-      if (res.error) {
-        setError(res.error.message || "Invalid email or password.");
-        setIsLoading(null);
+
+      if (mode === "signup") {
+        const res = await signUp.email({
+          email,
+          password,
+          name: name.trim() || email.split("@")[0],
+          callbackURL: "/",
+        });
+        if (res.error) {
+          setError(res.error.message || "Failed to create account.");
+          setIsLoading(null);
+          return;
+        }
       } else {
-        router.push("/");
-        router.refresh();
+        const res = await signIn.email({
+          email,
+          password,
+          callbackURL: "/",
+        });
+        if (res.error) {
+          setError(res.error.message || "Invalid email or password.");
+          setIsLoading(null);
+          return;
+        }
       }
+
+      router.push("/");
+      router.refresh();
     } catch (err: any) {
       setError(err?.message || "Something went wrong.");
       setIsLoading(null);
@@ -79,9 +99,9 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-md space-y-8 animate-in fade-in duration-300">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl mb-2">
-            <HyirLogo className="w-6 h-6 text-white" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white border border-zinc-200 shadow-xl mb-1">
+            <HyirLogo className="w-7 h-7 text-black" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-light tracking-tight text-white">
             Welcome to Hyir
@@ -94,7 +114,7 @@ export default function LoginPage() {
         {/* Auth Card */}
         <div className="p-7 sm:p-8 rounded-2xl bg-zinc-950/80 border border-zinc-800 shadow-2xl backdrop-blur-xl space-y-6">
           {error && (
-            <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-500/30 text-xs text-red-300 font-medium">
+            <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-500/30 text-xs text-red-300 font-medium leading-relaxed">
               {error}
             </div>
           )}
@@ -177,16 +197,62 @@ export default function LoginPage() {
           </div>
 
           {/* Email / Password Toggle */}
-          {!isEmailSignIn ? (
+          {!isEmailFormOpen ? (
             <button
               type="button"
-              onClick={() => setIsEmailSignIn(true)}
+              onClick={() => setIsEmailFormOpen(true)}
               className="w-full py-2.5 px-4 rounded-xl bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer text-center"
             >
               Sign in with Email & Password
             </button>
           ) : (
-            <form onSubmit={handleEmailSignIn} className="space-y-4 animate-in fade-in duration-150">
+            <form onSubmit={handleEmailAuth} className="space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center justify-center p-1 rounded-xl bg-zinc-900/80 border border-zinc-800 mb-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signin");
+                    setError("");
+                  }}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                    mode === "signin"
+                      ? "bg-white text-black font-semibold shadow-xs"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signup");
+                    setError("");
+                  }}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                    mode === "signup"
+                      ? "bg-white text-black font-semibold shadow-xs"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+
+              {mode === "signup" && (
+                <div className="space-y-1.5 animate-in fade-in duration-150">
+                  <label className="block text-xs font-medium text-zinc-400">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Alex Morgan"
+                    className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                  />
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-zinc-400">
                   Email Address
@@ -224,7 +290,7 @@ export default function LoginPage() {
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <>
-                    <span>Sign In</span>
+                    <span>{mode === "signin" ? "Sign In" : "Create Account"}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
@@ -233,7 +299,7 @@ export default function LoginPage() {
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => setIsEmailSignIn(false)}
+                  onClick={() => setIsEmailFormOpen(false)}
                   className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
                 >
                   ← Back to social logins

@@ -13,19 +13,16 @@ export const auth = betterAuth({
   },
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      enabled: Boolean(process.env.GOOGLE_CLIENT_ID),
+      clientId: process.env.GOOGLE_CLIENT_ID || "dev-google-client-id",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dev-google-client-secret",
     },
     linkedin: {
-      clientId: process.env.LINKEDIN_CLIENT_ID || "",
-      clientSecret: process.env.LINKEDIN_CLIENT_SECRET || "",
-      enabled: Boolean(process.env.LINKEDIN_CLIENT_ID),
+      clientId: process.env.LINKEDIN_CLIENT_ID || "dev-linkedin-client-id",
+      clientSecret: process.env.LINKEDIN_CLIENT_SECRET || "dev-linkedin-client-secret",
     },
     apple: {
-      clientId: process.env.APPLE_CLIENT_ID || "",
-      clientSecret: process.env.APPLE_CLIENT_SECRET || "",
-      enabled: Boolean(process.env.APPLE_CLIENT_ID),
+      clientId: process.env.APPLE_CLIENT_ID || "dev-apple-client-id",
+      clientSecret: process.env.APPLE_CLIENT_SECRET || "dev-apple-client-secret",
     },
   },
   plugins: [nextCookies()],
