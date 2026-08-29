@@ -46,6 +46,41 @@ async function getDashboardData() {
     _count: { status: true },
   });
 
+  // Get triage statistics
+  const allAppsForTriage = await prisma.application.findMany({
+    select: {
+      status: true,
+      applicationUrl: true,
+      contactName: true,
+      dateApplied: true,
+      salary: true,
+      nextFollowUpDate: true,
+    },
+  });
+
+  let draftsCount = 0;
+  let missingLinksCount = 0;
+  let missingDatesCount = 0;
+  let missingContactsCount = 0;
+  let totalTriageCount = 0;
+
+  for (const app of allAppsForTriage) {
+    const isDraft = app.status === "SAVED";
+    const hasNoUrl = !app.applicationUrl;
+    const hasNoDate = !app.dateApplied && !isDraft;
+    const hasNoContact = !app.contactName && !isDraft;
+    const hasNoSalary = !app.salary || app.salary.trim() === "";
+
+    if (isDraft) draftsCount++;
+    if (hasNoUrl) missingLinksCount++;
+    if (hasNoDate) missingDatesCount++;
+    if (hasNoContact) missingContactsCount++;
+
+    if (isDraft || hasNoUrl || hasNoDate || hasNoContact || hasNoSalary) {
+      totalTriageCount++;
+    }
+  }
+
   return {
     totalApps,
     activeApps,
@@ -55,6 +90,13 @@ async function getDashboardData() {
     recentApps,
     followUps,
     statusCounts,
+    triageStats: {
+      total: totalTriageCount,
+      drafts: draftsCount,
+      missingLinks: missingLinksCount,
+      missingDates: missingDatesCount,
+      missingContacts: missingContactsCount,
+    },
   };
 }
 
@@ -282,75 +324,160 @@ export default async function Dashboard() {
           </section>
         </div>
 
-        {/* Right Column: Follow-ups */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Action Items</h2>
-            <Link
-              href="/follow-ups"
-              className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
-            >
-              Manage <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
+        {/* Right Column: Triage Insights & Action Items */}
+        <div className="space-y-10">
+          {/* Triage Insights */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium flex items-center gap-2">
+                <span>Triage Insights</span>
+                {data.triageStats.total > 0 && (
+                  <span className="flex items-center justify-center min-w-[18px] h-4 px-1.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {data.triageStats.total}
+                  </span>
+                )}
+              </h2>
+              <Link
+                href="/triage"
+                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+              >
+                Review <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
 
-          <div className="space-y-3">
-            {data.followUps.length === 0 ? (
-              <div className="p-6 border border-zinc-900 rounded-lg bg-zinc-950/30 text-center">
-                <p className="text-zinc-500 text-sm">
-                  You&apos;re all caught up. No follow-ups due.
-                </p>
-              </div>
-            ) : (
-              data.followUps.map((app) => {
-                if (!app.nextFollowUpDate) return null;
-                const date = new Date(app.nextFollowUpDate);
-                const isDueToday = isToday(date);
-                const isOverdue = isPast(date) && !isDueToday;
-
-                return (
-                  <div
-                    key={app.id}
-                    className="p-4 border border-zinc-900 rounded-lg hover:border-zinc-700 transition-colors bg-zinc-950/30 group"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <Link
-                        href={`/applications/${app.slug}`}
-                        className="font-medium text-sm text-zinc-200 group-hover:text-white transition-colors"
-                      >
-                        {app.companyName}
-                      </Link>
-                      <span
-                        className={cn(
-                          "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
-                          isOverdue
-                            ? "text-red-400 border-red-400/20 bg-red-400/10"
-                            : isDueToday
-                              ? "text-amber-400 border-amber-400/20 bg-amber-400/10"
-                              : "text-zinc-400 border-zinc-800 bg-zinc-900/50",
-                        )}
-                      >
-                        {isOverdue
-                          ? "Overdue"
-                          : isDueToday
-                            ? "Today"
-                            : format(date, "MMM d")}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-500 mb-3">
-                      {app.roleTitle}
+            <div className="p-4 border border-zinc-900 rounded-xl bg-zinc-950/40 space-y-4">
+              {data.triageStats.total === 0 ? (
+                <div className="py-2 text-center text-xs text-zinc-500">
+                  ✨ All applications are complete & properly formatted.
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <h4 className="text-xs font-medium text-zinc-200">
+                      {data.triageStats.total} {data.triageStats.total === 1 ? 'application needs' : 'applications need'} hygiene polish
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">
+                      Add missing contacts & details to improve response tracking.
                     </p>
-
-                    <div className="flex items-center gap-2">
-                      <button className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors">
-                        <Clock className="w-3 h-3" /> Mark as done
-                      </button>
-                    </div>
                   </div>
-                );
-              })
-            )}
-          </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-900/80">
+                    {data.triageStats.missingContacts > 0 && (
+                      <div className="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+                        <span className="text-[11px] text-zinc-400">No Contact</span>
+                        <span className="text-xs font-semibold text-zinc-200 font-mono">
+                          {data.triageStats.missingContacts}
+                        </span>
+                      </div>
+                    )}
+                    {data.triageStats.drafts > 0 && (
+                      <div className="p-2 rounded-lg bg-red-950/20 border border-red-500/20 flex items-center justify-between">
+                        <span className="text-[11px] text-red-300">Drafts</span>
+                        <span className="text-xs font-semibold text-red-200 font-mono">
+                          {data.triageStats.drafts}
+                        </span>
+                      </div>
+                    )}
+                    {data.triageStats.missingLinks > 0 && (
+                      <div className="p-2 rounded-lg bg-amber-950/20 border border-amber-500/20 flex items-center justify-between">
+                        <span className="text-[11px] text-amber-300">No Link</span>
+                        <span className="text-xs font-semibold text-amber-200 font-mono">
+                          {data.triageStats.missingLinks}
+                        </span>
+                      </div>
+                    )}
+                    {data.triageStats.missingDates > 0 && (
+                      <div className="p-2 rounded-lg bg-blue-950/20 border border-blue-500/20 flex items-center justify-between">
+                        <span className="text-[11px] text-blue-300">No Date</span>
+                        <span className="text-xs font-semibold text-blue-200 font-mono">
+                          {data.triageStats.missingDates}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Link
+                    href="/triage"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium rounded-lg text-zinc-200 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                  >
+                    <span>Open Quick Triage</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Action Items (Follow-ups) */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium">Action Items</h2>
+              <Link
+                href="/follow-ups"
+                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+              >
+                Manage <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              {data.followUps.length === 0 ? (
+                <div className="p-6 border border-zinc-900 rounded-lg bg-zinc-950/30 text-center">
+                  <p className="text-zinc-500 text-sm">
+                    You&apos;re all caught up. No follow-ups due.
+                  </p>
+                </div>
+              ) : (
+                data.followUps.map((app) => {
+                  if (!app.nextFollowUpDate) return null;
+                  const date = new Date(app.nextFollowUpDate);
+                  const isDueToday = isToday(date);
+                  const isOverdue = isPast(date) && !isDueToday;
+
+                  return (
+                    <div
+                      key={app.id}
+                      className="p-4 border border-zinc-900 rounded-lg hover:border-zinc-700 transition-colors bg-zinc-950/30 group"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <Link
+                          href={`/applications/${app.slug}`}
+                          className="font-medium text-sm text-zinc-200 group-hover:text-white transition-colors"
+                        >
+                          {app.companyName}
+                        </Link>
+                        <span
+                          className={cn(
+                            "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
+                            isOverdue
+                              ? "text-red-400 border-red-400/20 bg-red-400/10"
+                              : isDueToday
+                                ? "text-amber-400 border-amber-400/20 bg-amber-400/10"
+                                : "text-zinc-400 border-zinc-800 bg-zinc-900/50",
+                          )}
+                        >
+                          {isOverdue
+                            ? "Overdue"
+                            : isDueToday
+                              ? "Today"
+                              : format(date, "MMM d")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500 mb-3">
+                        {app.roleTitle}
+                      </p>
+
+                      <div className="flex items-center gap-2">
+                        <button className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors">
+                          <Clock className="w-3 h-3" /> Mark as done
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
         </div>
       </div>
     </div>
