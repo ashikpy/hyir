@@ -36,12 +36,15 @@ export default function RootLayout({
         <aside className="w-64 border-r border-zinc-900 bg-black p-6 flex flex-col h-full sticky top-0">
           <Nav />
           <div className="mt-auto">
-            <AddApplicationButton className="flex items-center justify-center w-full py-2 px-3 bg-zinc-900 hover:bg-zinc-800 text-sm font-medium rounded-md transition-colors text-zinc-300">
-              <span className="mr-2">+</span> Add Application
+            <AddApplicationButton className="flex items-center justify-between w-full py-2 px-3 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl transition-all text-zinc-200 shadow-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="text-sm font-light text-zinc-400">+</span>
+                <span>Add Application</span>
+              </span>
+              <kbd className="text-[10px] font-mono text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">
+                N
+              </kbd>
             </AddApplicationButton>
-            <p className="text-xs text-zinc-600 mt-4 text-center">
-              Press N for new application
-            </p>
           </div>
         </aside>
 

@@ -85,7 +85,7 @@ const STATUS_OPTIONS = [
 
 const JOB_TYPE_OPTIONS = [
   { value: "FULL_TIME", label: "Full Time", icon: Briefcase },
-  { value: "INTERNSHIP", label: "Internship", icon: GraduationCap },
+  { value: "INTERNSHIP", label: "Intern", icon: GraduationCap },
   { value: "CONTRACT", label: "Contract", icon: FileCode2 },
 ];
 
@@ -281,9 +281,9 @@ export default function NewApplicationPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pt-4 pb-24">
+    <div className="max-w-3xl mx-auto py-6 space-y-6">
       {/* Top Nav & Breadcrumbs */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         <Link
           href="/applications"
           className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors group"
@@ -501,16 +501,16 @@ export default function NewApplicationPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => setJobType(opt.value)}
-                        className={`inline-flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-medium text-center transition-all border cursor-pointer ${
+                        className={`inline-flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl text-xs font-medium text-center transition-all border cursor-pointer ${
                           isSelected
-                            ? "bg-zinc-800 text-zinc-100 border-zinc-600 ring-1 ring-zinc-500/30 shadow-xs"
-                            : "bg-zinc-900/50 text-zinc-400 border-zinc-800/90 hover:border-zinc-700 hover:text-zinc-200"
+                            ? "bg-zinc-800 text-white border-zinc-500 ring-1 ring-zinc-500/50 shadow-xs font-semibold"
+                            : "bg-zinc-900/90 text-zinc-300 border-zinc-700/80 hover:border-zinc-500 hover:text-white hover:bg-zinc-800/60"
                         }`}
                       >
                         <Icon
-                          className={`w-3.5 h-3.5 ${isSelected ? "text-zinc-200" : "text-zinc-500"}`}
+                          className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-zinc-100" : "text-zinc-400"}`}
                         />
-                        <span className="truncate">{opt.label}</span>
+                        <span className="whitespace-nowrap">{opt.label}</span>
                       </button>
                     );
                   })}
