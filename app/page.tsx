@@ -40,6 +40,40 @@ async function getDashboardData() {
     take: 5,
   });
 
+  // Get triage statistics
+  const allAppsForTriage = await prisma.application.findMany({
+    select: {
+      status: true,
+      applicationUrl: true,
+      contactName: true,
+      dateApplied: true,
+      salary: true,
+    },
+  });
+
+  let draftsCount = 0;
+  let missingLinksCount = 0;
+  let missingDatesCount = 0;
+  let missingContactsCount = 0;
+  let totalTriageCount = 0;
+
+  for (const app of allAppsForTriage) {
+    const isDraft = app.status === "SAVED";
+    const hasNoUrl = !app.applicationUrl;
+    const hasNoDate = !app.dateApplied && !isDraft;
+    const hasNoContact = !app.contactName && !isDraft;
+    const hasNoSalary = !app.salary || app.salary.trim() === "";
+
+    if (isDraft) draftsCount++;
+    if (hasNoUrl) missingLinksCount++;
+    if (hasNoDate) missingDatesCount++;
+    if (hasNoContact) missingContactsCount++;
+
+    if (isDraft || hasNoUrl || hasNoDate || hasNoContact || hasNoSalary) {
+      totalTriageCount++;
+    }
+  }
+
   return {
     totalApps,
     activeApps,
@@ -48,6 +82,13 @@ async function getDashboardData() {
     rejections,
     recentApps,
     followUps,
+    triageStats: {
+      total: totalTriageCount,
+      drafts: draftsCount,
+      missingLinks: missingLinksCount,
+      missingDates: missingDatesCount,
+      missingContacts: missingContactsCount,
+    },
   };
 }
 
@@ -236,74 +277,181 @@ export default async function Dashboard() {
           </div>
         </div>
 
-        {/* Right Column: Action Items */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Action Items</h2>
-            <Link
-              href="/follow-ups"
-              className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
-            >
-              Manage <ArrowRight className="w-3 h-3" />
-            </Link>
+        {/* Right Column: Triage Insights & Action Items */}
+        <div className="space-y-10">
+          {/* Triage Insights */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium flex items-center gap-2">
+                <span>Triage</span>
+                {data.triageStats.total > 0 && (
+                  <span className="flex items-center justify-center min-w-[18px] h-4 px-1.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {data.triageStats.total}
+                  </span>
+                )}
+              </h2>
+              <Link
+                href="/triage"
+                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+              >
+                Review all <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            <div className="border border-zinc-900 rounded-lg overflow-hidden bg-zinc-950/30 divide-y divide-zinc-900/60">
+              {data.triageStats.missingContacts > 0 && (
+                <Link
+                  href="/triage"
+                  className="flex items-center justify-between p-3.5 hover:bg-zinc-900/40 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                    <span className="text-xs font-medium text-zinc-300 group-hover:text-white transition-colors">
+                      No Recruiter Contact
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-zinc-400">
+                      {data.triageStats.missingContacts}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+                  </div>
+                </Link>
+              )}
+              {data.triageStats.drafts > 0 && (
+                <Link
+                  href="/triage"
+                  className="flex items-center justify-between p-3.5 hover:bg-zinc-900/40 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                    <span className="text-xs font-medium text-red-300 group-hover:text-white transition-colors">
+                      Unfinished Drafts
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-red-400">
+                      {data.triageStats.drafts}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+                  </div>
+                </Link>
+              )}
+              {data.triageStats.missingLinks > 0 && (
+                <Link
+                  href="/triage"
+                  className="flex items-center justify-between p-3.5 hover:bg-zinc-900/40 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span className="text-xs font-medium text-amber-300 group-hover:text-white transition-colors">
+                      Missing Job Links
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-amber-400">
+                      {data.triageStats.missingLinks}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+                  </div>
+                </Link>
+              )}
+              {data.triageStats.missingDates > 0 && (
+                <Link
+                  href="/triage"
+                  className="flex items-center justify-between p-3.5 hover:bg-zinc-900/40 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    <span className="text-xs font-medium text-blue-300 group-hover:text-white transition-colors">
+                      Missing Applied Date
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-blue-400">
+                      {data.triageStats.missingDates}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+                  </div>
+                </Link>
+              )}
+              {data.triageStats.total === 0 && (
+                <div className="p-4 text-center text-xs text-zinc-500">
+                  All applications complete & formatted.
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {data.followUps.length === 0 ? (
-              <div className="p-6 border border-zinc-900 rounded-lg bg-zinc-950/30 text-center">
-                <p className="text-zinc-500 text-sm">
-                  You&apos;re all caught up. No follow-ups due.
-                </p>
-              </div>
-            ) : (
-              data.followUps.map((app) => {
-                if (!app.nextFollowUpDate) return null;
-                const date = new Date(app.nextFollowUpDate);
-                const isDueToday = isToday(date);
-                const isOverdue = isPast(date) && !isDueToday;
+          {/* Action Items */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium">Action Items</h2>
+              <Link
+                href="/follow-ups"
+                className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+              >
+                Manage <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
 
-                return (
-                  <div
-                    key={app.id}
-                    className="p-4 border border-zinc-900 rounded-lg hover:border-zinc-700 transition-colors bg-zinc-950/30 group"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <Link
-                        href={`/applications/${app.slug}`}
-                        className="font-medium text-sm text-zinc-200 group-hover:text-white transition-colors"
-                      >
-                        {app.companyName}
-                      </Link>
-                      <span
-                        className={cn(
-                          "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
-                          isOverdue
-                            ? "text-red-400 border-red-400/20 bg-red-400/10"
+            <div className="space-y-3">
+              {data.followUps.length === 0 ? (
+                <div className="p-6 border border-zinc-900 rounded-lg bg-zinc-950/30 text-center">
+                  <p className="text-zinc-500 text-sm">
+                    You&apos;re all caught up. No follow-ups due.
+                  </p>
+                </div>
+              ) : (
+                data.followUps.map((app) => {
+                  if (!app.nextFollowUpDate) return null;
+                  const date = new Date(app.nextFollowUpDate);
+                  const isDueToday = isToday(date);
+                  const isOverdue = isPast(date) && !isDueToday;
+
+                  return (
+                    <div
+                      key={app.id}
+                      className="p-4 border border-zinc-900 rounded-lg hover:border-zinc-700 transition-colors bg-zinc-950/30 group"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <Link
+                          href={`/applications/${app.slug}`}
+                          className="font-medium text-sm text-zinc-200 group-hover:text-white transition-colors"
+                        >
+                          {app.companyName}
+                        </Link>
+                        <span
+                          className={cn(
+                            "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
+                            isOverdue
+                              ? "text-red-400 border-red-400/20 bg-red-400/10"
+                              : isDueToday
+                                ? "text-amber-400 border-amber-400/20 bg-amber-400/10"
+                                : "text-zinc-400 border-zinc-800 bg-zinc-900/50",
+                          )}
+                        >
+                          {isOverdue
+                            ? "Overdue"
                             : isDueToday
-                              ? "text-amber-400 border-amber-400/20 bg-amber-400/10"
-                              : "text-zinc-400 border-zinc-800 bg-zinc-900/50",
-                        )}
-                      >
-                        {isOverdue
-                          ? "Overdue"
-                          : isDueToday
-                            ? "Today"
-                            : format(date, "MMM d")}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-500 mb-3">
-                      {app.roleTitle}
-                    </p>
+                              ? "Today"
+                              : format(date, "MMM d")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500 mb-3">
+                        {app.roleTitle}
+                      </p>
 
-                    <div className="flex items-center gap-2">
-                      <button className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors">
-                        <Clock className="w-3 h-3" /> Mark as done
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button className="text-xs font-medium text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors">
+                          <Clock className="w-3 h-3" /> Mark as done
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>
