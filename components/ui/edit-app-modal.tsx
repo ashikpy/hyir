@@ -89,6 +89,7 @@ export function EditApplicationModal({
 }) {
   const [isPending, setIsPending] = useState(false)
   const [status, setStatus] = useState<ApplicationStatus>(application.status)
+  const [salary, setSalary] = useState(application.salary || '')
   const [jobType, setJobType] = useState<string>(
     ['FULL_TIME', 'INTERNSHIP', 'CONTRACT'].includes(application.jobType)
       ? application.jobType
@@ -288,14 +289,28 @@ export function EditApplicationModal({
 
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-zinc-500" /> Target Salary
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                    <DollarSign className="w-3.5 h-3.5 text-zinc-500" /> Target Salary
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setSalary(salary === 'Not Disclosed' ? '' : 'Not Disclosed')}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                      salary === 'Not Disclosed'
+                        ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                        : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                    }`}
+                  >
+                    {salary === 'Not Disclosed' ? '✓ Not Disclosed' : 'Not Disclosed'}
+                  </button>
+                </div>
                 <input 
                   name="salary"
                   type="text" 
-                  defaultValue={application.salary || ''}
-                  placeholder="e.g. $150k - $180k"
+                  value={salary}
+                  onChange={(e) => setSalary(e.target.value)}
+                  placeholder="e.g. $150k - $180k or Not Disclosed"
                   className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all"
                 />
               </div>

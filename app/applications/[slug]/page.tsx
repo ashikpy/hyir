@@ -23,35 +23,12 @@ import { ApplicationStatus, TimelineEventType } from "@prisma/client"
 import { CompanyLogo, ContactAvatar } from "@/components/ui/avatars"
 import { ApplicationActions } from "@/components/ui/application-actions"
 import { AddTimelineEventModal } from "@/components/ui/add-timeline-event-modal"
+import { StatusDropdown } from "@/components/ui/status-dropdown"
+import { EditableNotes } from "@/components/ui/editable-notes"
 
 export const dynamic = 'force-dynamic'
 
-function StatusBadge({ status }: { status: ApplicationStatus }) {
-  const statusConfig: Record<ApplicationStatus, { badge: string; dot: string }> = {
-    SAVED: { badge: 'text-zinc-400 border-zinc-800 bg-zinc-900', dot: 'bg-zinc-500' },
-    APPLIED: { badge: 'text-blue-400 border-blue-500/30 bg-blue-950/40', dot: 'bg-blue-400' },
-    CONTACTED: { badge: 'text-purple-400 border-purple-500/30 bg-purple-950/40', dot: 'bg-purple-400' },
-    SCREENING: { badge: 'text-amber-400 border-amber-500/30 bg-amber-950/40', dot: 'bg-amber-400' },
-    INTERVIEW: { badge: 'text-orange-400 border-orange-500/30 bg-orange-950/40', dot: 'bg-orange-400' },
-    ASSIGNMENT: { badge: 'text-indigo-400 border-indigo-500/30 bg-indigo-950/40', dot: 'bg-indigo-400' },
-    OFFER: { badge: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40', dot: 'bg-emerald-400' },
-    ACCEPTED: { badge: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40', dot: 'bg-emerald-400' },
-    REJECTED: { badge: 'text-rose-400 border-rose-500/30 bg-rose-950/40', dot: 'bg-rose-400' },
-    GHOSTED: { badge: 'text-zinc-400 border-zinc-800 bg-zinc-900', dot: 'bg-zinc-500' },
-    WITHDRAWN: { badge: 'text-zinc-500 border-zinc-800 bg-zinc-900', dot: 'bg-zinc-500' },
-  }
-
-  const config = statusConfig[status] || statusConfig.SAVED
-
-  return (
-    <span className={`inline-flex items-center justify-center gap-2 h-8 px-3 text-xs font-semibold uppercase tracking-wider border rounded-xl ${config.badge}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-      <span>{status.replace('_', ' ')}</span>
-    </span>
-  )
-}
-
-function formatEventType(type: TimelineEventType | string): string {
+function formatEventType(type: TimelineEventType | string, description?: string | null): string {
   switch (type) {
     case 'STATUS_CHANGE':
       return 'Status Changed'
@@ -59,6 +36,13 @@ function formatEventType(type: TimelineEventType | string): string {
       return 'Follow-up Scheduled'
     case 'NOTE_ADDED':
       return 'Note Logged'
+    case 'CUSTOM':
+      if (description) {
+        const lower = description.toLowerCase()
+        if (lower.includes('recruiter') || lower.includes('contact')) return 'Recruiter / Contact'
+        if (lower.includes('salary')) return 'Salary Updated'
+      }
+      return 'Activity Logged'
     default:
       return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
   }
@@ -108,7 +92,7 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
 
         <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3">
           <div className="flex items-center gap-2">
-            <StatusBadge status={application.status} />
+            <StatusDropdown applicationId={application.id} initialStatus={application.status} />
             <ApplicationActions application={application} />
           </div>
           <span className="text-xs text-zinc-500 font-medium">
@@ -186,23 +170,11 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
             </section>
           )}
 
-          {/* Notes & Strategy (Prominent Main Area) */}
-          <section className="p-6 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-900/80 pb-3">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-zinc-400" />
-                <h3 className="text-xs font-semibold text-zinc-300">Notes & Strategy</h3>
-              </div>
-            </div>
-
-            {application.notes ? (
-              <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-normal">
-                {application.notes}
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-600 italic">No notes or strategy added for this application yet.</p>
-            )}
-          </section>
+          {/* Notes & Strategy (In-place Editable) */}
+          <EditableNotes 
+            applicationId={application.id} 
+            initialNotes={application.notes} 
+          />
 
           {/* Document Versions */}
           {(application.resumeVersion || application.portfolioVersion) && (
@@ -326,7 +298,7 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
                         <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-2">
                             <span className="text-xs font-medium text-zinc-200">
-                              {formatEventType(event.eventType)}
+                              {formatEventType(event.eventType, event.description)}
                             </span>
                             <span className="text-[10px] text-zinc-500 font-mono shrink-0">
                               {format(new Date(event.date), 'MMM d, yyyy')}

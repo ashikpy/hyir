@@ -133,6 +133,7 @@ export default function NewApplicationPage() {
   const [workplaceType, setWorkplaceType] = useState('REMOTE')
   const [location, setLocation] = useState('')
   const [dateApplied, setDateApplied] = useState(() => new Date().toISOString().split('T')[0])
+  const [salary, setSalary] = useState('')
   
   // Step 2 Optional details toggle
   const [showMoreOptional, setShowMoreOptional] = useState(false)
@@ -512,13 +513,28 @@ export default function NewApplicationPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Target Salary (Optional) */}
                     <div className="flex flex-col gap-2">
-                      <label className="block text-xs font-medium text-zinc-400">
-                        Target Salary (Optional)
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-medium text-zinc-400">
+                          Target Salary (Optional)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setSalary(salary === 'Not Disclosed' ? '' : 'Not Disclosed')}
+                          className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                            salary === 'Not Disclosed'
+                              ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                              : 'bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                          }`}
+                        >
+                          {salary === 'Not Disclosed' ? '✓ Not Disclosed' : 'Not Disclosed'}
+                        </button>
+                      </div>
                       <input 
                         name="salary"
                         type="text" 
-                        placeholder="e.g. $140k - $170k / ₹25 LPA"
+                        value={salary}
+                        onChange={(e) => setSalary(e.target.value)}
+                        placeholder="e.g. $140k - $170k / ₹25 LPA or Not Disclosed"
                         className="w-full bg-[#0c0c0e] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                       />
                     </div>

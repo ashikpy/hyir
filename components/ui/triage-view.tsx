@@ -149,14 +149,11 @@ function getAppIssues(app: TriageApp): IssueTag[] {
   if (!app.contactName && app.status !== 'SAVED') {
     tags.push({ label: 'No Contact', tier: 'warning', key: 'no_contact' })
   }
-  if (!app.salary) {
+  if (!app.salary || app.salary.trim() === '') {
     tags.push({ label: 'No Salary', tier: 'warning', key: 'no_salary' })
   }
   if (app.status === 'INTERVIEW' && !app.nextFollowUpDate) {
     tags.push({ label: 'No Interview Date', tier: 'warning', key: 'no_interview_date' })
-  }
-  if (!app.notes || app.notes.trim() === '') {
-    tags.push({ label: 'No Notes', tier: 'info', key: 'no_notes' })
   }
 
   return tags
@@ -174,22 +171,9 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
   const [formSalary, setFormSalary] = useState('')
   const [formContactName, setFormContactName] = useState('')
   const [formContactEmail, setFormContactEmail] = useState('')
-  const [formNotes, setFormNotes] = useState('')
   const [formStatus, setFormStatus] = useState<ApplicationStatus>('APPLIED')
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const notesTextareaRef = useRef<HTMLTextAreaElement>(null)
-
-  // Auto-resize notes textarea
-  useEffect(() => {
-    if (notesTextareaRef.current) {
-      notesTextareaRef.current.style.height = 'auto'
-      notesTextareaRef.current.style.height = `${Math.min(
-        Math.max(notesTextareaRef.current.scrollHeight, 80),
-        360
-      )}px`
-    }
-  }, [formNotes, activeAppId])
 
   // Filter applications that have any issues
   const triageItems = useMemo(() => {
@@ -257,7 +241,6 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       setFormSalary(activeApp.salary || '')
       setFormContactName(activeApp.contactName || '')
       setFormContactEmail(activeApp.contactEmail || '')
-      setFormNotes(activeApp.notes || '')
       setFormStatus(activeApp.status)
       setSaveSuccess(false)
     }
@@ -276,7 +259,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeAppId, formUrl, formDateApplied, formSalary, formContactName, formContactEmail, formNotes, formStatus])
+  }, [activeAppId, formUrl, formDateApplied, formSalary, formContactName, formContactEmail, formStatus])
 
   async function handleSaveDrawer(advanceToNext = false) {
     if (!activeApp) return
@@ -288,7 +271,6 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
         salary: formSalary.trim() || null,
         contactName: formContactName.trim() || null,
         contactEmail: formContactEmail.trim() || null,
-        notes: formNotes.trim() || null,
         status: formStatus,
       })
 
@@ -633,15 +615,28 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
               {/* Target Salary */}
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>Target Salary</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                    <DollarSign className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>Target Salary</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormSalary(formSalary === 'Not Disclosed' ? '' : 'Not Disclosed')}
+                    className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                      formSalary === 'Not Disclosed'
+                        ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                        : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                    }`}
+                  >
+                    {formSalary === 'Not Disclosed' ? '✓ Not Disclosed' : 'Not Disclosed'}
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={formSalary}
                   onChange={(e) => setFormSalary(e.target.value)}
-                  placeholder="e.g. $140k - $170k / ₹25 LPA"
+                  placeholder="e.g. $140k - $170k / ₹25 LPA or Not Disclosed"
                   className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                 />
               </div>
@@ -675,25 +670,6 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                     className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
                   />
                 </div>
-              </div>
-
-              {/* Prep Notes */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>Notes & Strategy</span>
-                </label>
-                <textarea
-                  ref={notesTextareaRef}
-                  value={formNotes}
-                  onChange={(e) => {
-                    setFormNotes(e.target.value)
-                    e.target.style.height = 'auto'
-                    e.target.style.height = `${Math.min(Math.max(e.target.scrollHeight, 80), 360)}px`
-                  }}
-                  placeholder="Recruiter notes, conversation points, portfolio used..."
-                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed overflow-y-auto"
-                />
               </div>
             </div>
 

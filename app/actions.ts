@@ -70,6 +70,19 @@ export async function createApplication(formData: FormData) {
 }
 
 export async function updateApplication(id: string, formData: FormData) {
+  const current = await prisma.application.findUnique({
+    where: { id },
+    select: {
+      status: true,
+      contactName: true,
+      contactEmail: true,
+      salary: true,
+      slug: true,
+    }
+  })
+
+  if (!current) throw new Error('Application not found')
+
   const companyName = formData.get('companyName') as string
   const roleTitle = formData.get('roleTitle') as string
   const status = formData.get('status') as ApplicationStatus
@@ -78,12 +91,12 @@ export async function updateApplication(id: string, formData: FormData) {
   const location = formData.get('location') as string
   const dateApplied = formData.get('dateApplied') as string
   const applicationUrl = formData.get('applicationUrl') as string
-  const salary = formData.get('salary') as string
-  const contactName = formData.get('contactName') as string
-  const contactEmail = formData.get('contactEmail') as string
-  const contactRole = formData.get('contactRole') as string
-  const contactUrl = formData.get('contactUrl') as string
-  const notes = formData.get('notes') as string
+  const salary = (formData.get('salary') as string)?.trim() || null
+  const contactName = (formData.get('contactName') as string)?.trim() || null
+  const contactEmail = (formData.get('contactEmail') as string)?.trim() || null
+  const contactRole = (formData.get('contactRole') as string)?.trim() || null
+  const contactUrl = (formData.get('contactUrl') as string)?.trim() || null
+  const notes = (formData.get('notes') as string)?.trim() || null
 
   if (!companyName || !roleTitle) {
     throw new Error('Company name and role title are required')
@@ -93,25 +106,95 @@ export async function updateApplication(id: string, formData: FormData) {
   const existing = await prisma.application.findFirst({ where: { slug: { startsWith: baseSlug }, NOT: { id } } })
   const slug = existing ? `${baseSlug}-${Math.floor(Math.random() * 1000)}` : baseSlug
 
-  const updated = await prisma.application.update({
-    where: { id },
-    data: {
-      slug,
-      companyName,
-      roleTitle,
-      status: status || 'SAVED',
-      jobType: (jobType as JobType),
-      workplaceType: (workplaceType as WorkplaceType),
-      location: location || null,
-      dateApplied: dateApplied ? new Date(dateApplied) : null,
-      applicationUrl: applicationUrl || null,
-      salary: salary || null,
-      contactName: contactName || null,
-      contactEmail: contactEmail || null,
-      contactRole: contactRole || null,
-      contactUrl: contactUrl || null,
-      notes: notes || null,
+  const timelineEventsToCreate: Array<{ eventType: TimelineEventType; description: string; date: Date }> = []
+  const now = new Date()
+
+  // 1. Status change
+  if (status && status !== current.status) {
+    timelineEventsToCreate.push({
+      eventType: 'STATUS_CHANGE',
+      date: now,
+      description: `Stage moved from ${current.status.replace('_', ' ')} to ${status.replace('_', ' ')}`
+    })
+  }
+
+  // 2. Recruiter / Contact
+  const prevContactName = current.contactName?.trim() || null
+  const prevContactEmail = current.contactEmail?.trim() || null
+
+  if (
+    (contactName !== prevContactName || contactEmail !== prevContactEmail) &&
+    (contactName || contactEmail)
+  ) {
+    if (!prevContactName && !prevContactEmail) {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Added recruiter ${contactName || ''}${contactEmail ? ` (${contactEmail})` : ''}`.trim()
+      })
+    } else {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Updated recruiter to ${contactName || 'contact'}${contactEmail ? ` (${contactEmail})` : ''}`.trim()
+      })
     }
+  }
+
+  // 3. Salary
+  const prevSalary = current.salary?.trim() || null
+  if (salary !== prevSalary && salary) {
+    if (salary.toLowerCase() === 'not disclosed') {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Target salary marked as Not Disclosed`
+      })
+    } else {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: !prevSalary
+          ? `Set target salary to ${salary}`
+          : `Updated target salary to ${salary}`
+      })
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const res = await tx.application.update({
+      where: { id },
+      data: {
+        slug,
+        companyName,
+        roleTitle,
+        status: status || 'SAVED',
+        jobType: (jobType as JobType),
+        workplaceType: (workplaceType as WorkplaceType),
+        location: location || null,
+        dateApplied: dateApplied ? new Date(dateApplied) : null,
+        applicationUrl: applicationUrl || null,
+        salary: salary || null,
+        contactName: contactName || null,
+        contactEmail: contactEmail || null,
+        contactRole: contactRole || null,
+        contactUrl: contactUrl || null,
+        notes: notes || null,
+      }
+    })
+
+    for (const evt of timelineEventsToCreate) {
+      await tx.timelineEvent.create({
+        data: {
+          applicationId: id,
+          eventType: evt.eventType,
+          date: evt.date,
+          description: evt.description,
+        }
+      })
+    }
+
+    return res
   })
 
   revalidatePath('/')
@@ -135,14 +218,101 @@ export async function quickUpdateTriageField(
     dateApplied?: string | Date | null
   }
 ) {
+  const current = await prisma.application.findUnique({
+    where: { id },
+    select: {
+      status: true,
+      contactName: true,
+      contactEmail: true,
+      salary: true,
+      slug: true,
+    }
+  })
+
+  if (!current) throw new Error('Application not found')
+
   const updateData: any = { ...data }
   if ('dateApplied' in data) {
     updateData.dateApplied = data.dateApplied ? new Date(data.dateApplied) : null
   }
 
-  const updated = await prisma.application.update({
-    where: { id },
-    data: updateData,
+  const timelineEventsToCreate: Array<{ eventType: TimelineEventType; description: string; date: Date }> = []
+  const now = new Date()
+
+  // 1. Status change
+  if (data.status && data.status !== current.status) {
+    timelineEventsToCreate.push({
+      eventType: 'STATUS_CHANGE',
+      date: now,
+      description: `Stage moved from ${current.status.replace('_', ' ')} to ${data.status.replace('_', ' ')}`
+    })
+  }
+
+  // 2. Recruiter / Contact
+  const newContactName = data.contactName !== undefined ? (data.contactName?.trim() || null) : current.contactName
+  const newContactEmail = data.contactEmail !== undefined ? (data.contactEmail?.trim() || null) : current.contactEmail
+  const prevContactName = current.contactName?.trim() || null
+  const prevContactEmail = current.contactEmail?.trim() || null
+
+  if (
+    (newContactName !== prevContactName || newContactEmail !== prevContactEmail) &&
+    (newContactName || newContactEmail)
+  ) {
+    if (!prevContactName && !prevContactEmail) {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Added recruiter ${newContactName || ''}${newContactEmail ? ` (${newContactEmail})` : ''}`.trim()
+      })
+    } else {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Updated recruiter to ${newContactName || 'contact'}${newContactEmail ? ` (${newContactEmail})` : ''}`.trim()
+      })
+    }
+  }
+
+  // 3. Target Salary
+  const newSalary = data.salary !== undefined ? (data.salary?.trim() || null) : current.salary
+  const prevSalary = current.salary?.trim() || null
+
+  if (newSalary !== prevSalary && newSalary) {
+    if (newSalary.toLowerCase() === 'not disclosed') {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: `Target salary marked as Not Disclosed`
+      })
+    } else {
+      timelineEventsToCreate.push({
+        eventType: 'CUSTOM',
+        date: now,
+        description: !prevSalary
+          ? `Set target salary to ${newSalary}`
+          : `Updated target salary to ${newSalary}`
+      })
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const res = await tx.application.update({
+      where: { id },
+      data: updateData,
+    })
+
+    for (const evt of timelineEventsToCreate) {
+      await tx.timelineEvent.create({
+        data: {
+          applicationId: id,
+          eventType: evt.eventType,
+          date: evt.date,
+          description: evt.description,
+        }
+      })
+    }
+
+    return res
   })
 
   revalidatePath('/')
@@ -157,7 +327,7 @@ export async function quickUpdateTriageField(
 export async function updateApplicationStatus(id: string, newStatus: ApplicationStatus) {
   const current = await prisma.application.findUnique({
     where: { id },
-    select: { status: true, companyName: true, roleTitle: true }
+    select: { status: true, companyName: true, roleTitle: true, slug: true }
   })
 
   if (!current) throw new Error('Application not found')
@@ -185,6 +355,9 @@ export async function updateApplicationStatus(id: string, newStatus: Application
     revalidatePath('/analytics')
     revalidatePath('/follow-ups')
     revalidatePath('/triage')
+    if (current.slug) {
+      revalidatePath(`/applications/${current.slug}`)
+    }
   } catch {
     // Ignore outside Next request lifecycle
   }
@@ -208,6 +381,28 @@ export async function addTimelineEvent(applicationId: string, formData: FormData
   revalidatePath('/applications')
   revalidatePath('/pipeline')
   revalidatePath('/follow-ups')
+}
+
+export async function updateApplicationNotes(id: string, notes: string) {
+  const updated = await prisma.application.update({
+    where: { id },
+    data: { notes: notes.trim() ? notes : null },
+    select: { slug: true }
+  })
+
+  try {
+    revalidatePath('/')
+    revalidatePath('/applications')
+    revalidatePath('/pipeline')
+    revalidatePath('/triage')
+    if (updated.slug) {
+      revalidatePath(`/applications/${updated.slug}`)
+    }
+  } catch {
+    // Ignore outside Next request lifecycle
+  }
+
+  return updated
 }
 
 export async function updateDocuments(applicationId: string, formData: FormData) {
@@ -483,7 +678,6 @@ export async function getTriageCount(): Promise<number> {
       applicationUrl: true,
       salary: true,
       contactName: true,
-      notes: true,
       dateApplied: true,
       nextFollowUpDate: true,
     }
@@ -506,10 +700,8 @@ export async function getTriageCount(): Promise<number> {
       (!app.dateApplied && !isDraft) ||
       isOverdue ||
       (!app.contactName && !isDraft) ||
-      !app.salary ||
-      (app.status === ApplicationStatus.INTERVIEW && !app.nextFollowUpDate) ||
-      !app.notes ||
-      app.notes.trim() === ''
+      (!app.salary || app.salary.trim() === '') ||
+      (app.status === ApplicationStatus.INTERVIEW && !app.nextFollowUpDate)
 
     if (hasIssue) {
       count++
