@@ -140,8 +140,8 @@ export function isAppStale(app: TriageApp): { isStale: boolean; daysInactive: nu
     return { isStale: false, daysInactive: 0, threshold: 0 }
   }
 
-  // Active / Demo threshold: 7 days for Applied, 5 days for Contacted
-  const threshold = app.status === 'APPLIED' ? 7 : 5
+  // Production thresholds: 25 days for Applied, 14 days for Contacted/Screening
+  const threshold = app.status === 'APPLIED' ? 25 : 14
 
   const dates: number[] = []
   if (app.dateApplied) dates.push(new Date(app.dateApplied).getTime())
