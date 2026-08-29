@@ -723,5 +723,59 @@ export async function getTriageCount(): Promise<number> {
   return count
 }
 
+export async function batchTransitionToGhosted(appIds: string[]) {
+  if (!appIds || appIds.length === 0) return { success: true, count: 0 }
 
+  const now = new Date()
+  await prisma.$transaction(async (tx) => {
+    const apps = await tx.application.findMany({
+      where: { id: { in: appIds } },
+      select: { id: true, status: true, slug: true, companyName: true }
+    })
 
+    await tx.application.updateMany({
+      where: { id: { in: appIds } },
+      data: { status: 'GHOSTED', updatedAt: now }
+    })
+
+    for (const app of apps) {
+      await tx.timelineEvent.create({
+        data: {
+          applicationId: app.id,
+          eventType: 'STATUS_CHANGE',
+          date: now,
+          description: `Stage moved from ${app.status.replace('_', ' ')} to Ghosted via Triage Stale Review`
+        }
+      })
+    }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/applications')
+  revalidatePath('/pipeline')
+  revalidatePath('/triage')
+  revalidatePath('/analytics')
+  revalidatePath('/follow-ups')
+
+  return { success: true, count: appIds.length }
+}
+
+export async function snoozeStaleApplication(id: string, days: number = 14) {
+  const snoozeDate = new Date()
+  snoozeDate.setDate(snoozeDate.getDate() + days)
+
+  await prisma.application.update({
+    where: { id },
+    data: {
+      nextFollowUpDate: snoozeDate,
+      updatedAt: new Date()
+    }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/applications')
+  revalidatePath('/pipeline')
+  revalidatePath('/triage')
+
+  return { success: true }
+}

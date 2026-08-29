@@ -26,6 +26,14 @@ export default async function TriagePage() {
       dateApplied: true,
       nextFollowUpDate: true,
       updatedAt: true,
+      timelineEvents: {
+        select: {
+          date: true,
+          eventType: true,
+        },
+        orderBy: { date: 'desc' },
+        take: 1,
+      },
     },
     orderBy: { updatedAt: 'desc' },
   })

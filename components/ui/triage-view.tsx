@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { format, isPast, isToday } from 'date-fns'
 import { ApplicationStatus } from '@prisma/client'
 import { CompanyLogo } from '@/components/ui/avatars'
-import { quickUpdateTriageField } from '@/app/actions'
+import { quickUpdateTriageField, batchTransitionToGhosted, snoozeStaleApplication } from '@/app/actions'
 import {
   AlertCircle,
   CheckCircle2,
@@ -20,7 +20,8 @@ import {
   User,
   Mail,
   FileText,
-  Calendar
+  Calendar,
+  Ghost
 } from 'lucide-react'
 
 export interface TriageApp {
@@ -43,9 +44,10 @@ export interface TriageApp {
   dateApplied: Date | string | null
   nextFollowUpDate: Date | string | null
   updatedAt: Date | string
+  timelineEvents?: Array<{ date: Date | string; eventType: string }>
 }
 
-export type TriageFilter = 'ALL' | 'DRAFTS' | 'NO_URL' | 'NO_DATE' | 'NO_CONTACT' | 'NO_SALARY'
+export type TriageFilter = 'ALL' | 'DRAFTS' | 'NO_URL' | 'NO_DATE' | 'NO_CONTACT' | 'NO_SALARY' | 'STALE'
 
 const STATUS_OPTIONS = [
   {
@@ -128,6 +130,35 @@ interface IssueTag {
   key: string
 }
 
+export function isAppStale(app: TriageApp): { isStale: boolean; daysInactive: number; threshold: number } {
+  if (!['APPLIED', 'CONTACTED', 'SCREENING'].includes(app.status)) {
+    return { isStale: false, daysInactive: 0, threshold: 0 }
+  }
+
+  // If there is an upcoming scheduled follow-up, it is not stale
+  if (app.nextFollowUpDate && new Date(app.nextFollowUpDate).getTime() > Date.now()) {
+    return { isStale: false, daysInactive: 0, threshold: 0 }
+  }
+
+  const threshold = app.status === 'APPLIED' ? 25 : 14
+
+  const dates: number[] = []
+  if (app.dateApplied) dates.push(new Date(app.dateApplied).getTime())
+  if (app.updatedAt) dates.push(new Date(app.updatedAt).getTime())
+  if (app.timelineEvents && app.timelineEvents.length > 0) {
+    dates.push(new Date(app.timelineEvents[0].date).getTime())
+  }
+
+  const latestActivity = dates.length > 0 ? Math.max(...dates) : new Date(app.updatedAt).getTime()
+  const daysInactive = Math.max(0, Math.floor((Date.now() - latestActivity) / (1000 * 60 * 60 * 24)))
+
+  return {
+    isStale: daysInactive >= threshold,
+    daysInactive,
+    threshold,
+  }
+}
+
 function getAppIssues(app: TriageApp): IssueTag[] {
   const tags: IssueTag[] = []
 
@@ -155,6 +186,11 @@ function getAppIssues(app: TriageApp): IssueTag[] {
   if (app.status === 'INTERVIEW' && !app.nextFollowUpDate) {
     tags.push({ label: 'No Interview Date', tier: 'warning', key: 'no_interview_date' })
   }
+  
+  const staleInfo = isAppStale(app)
+  if (staleInfo.isStale) {
+    tags.push({ label: `Stale (${staleInfo.daysInactive}d)`, tier: 'warning', key: 'stale' })
+  }
 
   return tags
 }
@@ -174,6 +210,13 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
   const [formStatus, setFormStatus] = useState<ApplicationStatus>('APPLIED')
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false)
+  const [isBatchGhosting, setIsBatchGhosting] = useState(false)
+
+  // Stale applications for quick review
+  const staleApps = useMemo(() => {
+    return applications.filter((app) => isAppStale(app).isStale)
+  }, [applications])
 
   // Filter applications that have any issues
   const triageItems = useMemo(() => {
@@ -192,6 +235,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     let noDate = 0
     let noContact = 0
     let noSalary = 0
+    let stale = 0
 
     triageItems.forEach(({ issues }) => {
       if (issues.some((i) => i.key === 'draft')) drafts++
@@ -199,9 +243,10 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       if (issues.some((i) => i.key === 'no_date')) noDate++
       if (issues.some((i) => i.key === 'no_contact')) noContact++
       if (issues.some((i) => i.key === 'no_salary')) noSalary++
+      if (issues.some((i) => i.key === 'stale')) stale++
     })
 
-    return { drafts, noUrl, noDate, noContact, noSalary }
+    return { drafts, noUrl, noDate, noContact, noSalary, stale }
   }, [triageItems])
 
   // Filtered by active tab & search
@@ -219,6 +264,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       if (filter === 'NO_DATE') return issues.some((i) => i.key === 'no_date')
       if (filter === 'NO_CONTACT') return issues.some((i) => i.key === 'no_contact')
       if (filter === 'NO_SALARY') return issues.some((i) => i.key === 'no_salary')
+      if (filter === 'STALE') return issues.some((i) => i.key === 'stale')
 
       return true
     })
@@ -297,6 +343,64 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Stale / Ghosting Review Banner */}
+      {staleApps.length > 0 && !isBannerDismissed && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-zinc-950/80 border border-zinc-800 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xl shrink-0">
+              👻
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-zinc-100">
+                {staleApps.length} {staleApps.length === 1 ? 'application has' : 'applications have'} been inactive for 2+ weeks
+              </h3>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Transition stale applications to Ghosted to keep your active pipeline accurate.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={isBatchGhosting}
+              onClick={async () => {
+                setIsBatchGhosting(true)
+                try {
+                  await batchTransitionToGhosted(staleApps.map((a) => a.id))
+                  router.refresh()
+                } catch (err) {
+                  console.error(err)
+                  alert('Failed to transition applications')
+                } finally {
+                  setIsBatchGhosting(false)
+                }
+              }}
+              className="text-xs font-semibold text-black bg-zinc-100 hover:bg-white px-3.5 py-2 rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+            >
+              {isBatchGhosting ? 'Moving...' : `Ghost All (${staleApps.length})`}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilter('STALE')}
+              className="text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
+            >
+              Review Stale
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsBannerDismissed(true)}
+              className="text-xs text-zinc-500 hover:text-zinc-300 p-2 rounded-lg hover:bg-zinc-900 transition-colors cursor-pointer"
+              title="Dismiss for now"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filter Tabs & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
@@ -311,6 +415,20 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
           >
             All ({triageItems.length})
           </button>
+
+          {counts.stale > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilter('STALE')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
+                filter === 'STALE'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-600 font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+              }`}
+            >
+              <span>👻 Stale ({counts.stale})</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -535,9 +653,43 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
               </div>
             </div>
 
-            {/* Quick Fill Form Fields */}
-            <div className="space-y-4 py-5 overflow-y-auto flex-1 text-xs">
-              {/* Status 3x2 Grid */}
+            {/* Drawer Form Fields */}
+          <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+            {/* Stale Item Review Banner inside Drawer */}
+            {activeApp && isAppStale(activeApp).isStale && (
+              <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base shrink-0">👻</span>
+                  <span className="text-xs text-zinc-300 truncate">
+                    Inactive for {isAppStale(activeApp).daysInactive}d ({activeApp.status})
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await quickUpdateTriageField(activeApp.id, { status: 'GHOSTED' })
+                      router.refresh()
+                    }}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition-colors cursor-pointer"
+                  >
+                    Ghost
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await snoozeStaleApplication(activeApp.id, 14)
+                      router.refresh()
+                    }}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition-colors cursor-pointer"
+                  >
+                    Snooze 14d
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Status Bar in Drawer */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-zinc-300 block">
                   Application Status
