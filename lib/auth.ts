@@ -20,10 +20,6 @@ export const auth = betterAuth({
       clientId: process.env.LINKEDIN_CLIENT_ID || "dev-linkedin-client-id",
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET || "dev-linkedin-client-secret",
     },
-    apple: {
-      clientId: process.env.APPLE_CLIENT_ID || "dev-apple-client-id",
-      clientSecret: process.env.APPLE_CLIENT_SECRET || "dev-apple-client-secret",
-    },
   },
   plugins: [nextCookies()],
 });
