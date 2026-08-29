@@ -492,7 +492,7 @@ export default function NewApplicationPage() {
                 <label className="block text-xs font-medium text-zinc-300">
                   Job Type <span className="text-red-400">*</span>
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex items-center p-1 rounded-xl bg-zinc-900/80 border border-zinc-800 h-[42px]">
                   {JOB_TYPE_OPTIONS.map((opt) => {
                     const isSelected = jobType === opt.value;
                     const Icon = opt.icon;
@@ -501,14 +501,14 @@ export default function NewApplicationPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => setJobType(opt.value)}
-                        className={`inline-flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl text-xs font-medium text-center transition-all border cursor-pointer ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition-all cursor-pointer ${
                           isSelected
-                            ? "bg-zinc-800 text-white border-zinc-500 ring-1 ring-zinc-500/50 shadow-xs font-semibold"
-                            : "bg-zinc-900/90 text-zinc-300 border-zinc-700/80 hover:border-zinc-500 hover:text-white hover:bg-zinc-800/60"
+                            ? "bg-zinc-800 text-white shadow-xs border border-zinc-700/70"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
                         }`}
                       >
                         <Icon
-                          className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-zinc-100" : "text-zinc-400"}`}
+                          className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-zinc-100" : "text-zinc-500"}`}
                         />
                         <span className="whitespace-nowrap">{opt.label}</span>
                       </button>
