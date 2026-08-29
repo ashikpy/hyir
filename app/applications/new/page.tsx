@@ -501,14 +501,14 @@ export default function NewApplicationPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => setJobType(opt.value)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs transition-all cursor-pointer ${
                           isSelected
-                            ? "bg-zinc-800 text-white shadow-xs border border-zinc-700/70"
-                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
+                            ? "bg-white text-black font-semibold shadow-sm"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 font-medium"
                         }`}
                       >
                         <Icon
-                          className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-zinc-100" : "text-zinc-500"}`}
+                          className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-black" : "text-zinc-500"}`}
                         />
                         <span className="whitespace-nowrap">{opt.label}</span>
                       </button>
