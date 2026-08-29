@@ -20,7 +20,7 @@ async function main() {
     data: {
       email: 'hello@example.com',
       name: 'Jane Designer',
-      avatarUrl: 'https://api.dicebear.com/7.x/notionists/svg?seed=Jane',
+      image: 'https://api.dicebear.com/7.x/notionists/svg?seed=Jane',
     },
   })
 
