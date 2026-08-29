@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { format, isPast, isToday } from 'date-fns'
 import { ApplicationStatus } from '@prisma/client'
 import { CompanyLogo } from '@/components/ui/avatars'
-import { quickUpdateTriageField, batchTransitionToGhosted, snoozeStaleApplication } from '@/app/actions'
+import { quickUpdateTriageField, batchTransitionToGhosted, snoozeStaleApplication, scheduleCalendarFollowUp } from '@/app/actions'
 import {
   AlertCircle,
   CheckCircle2,
@@ -216,6 +216,29 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isBannerDismissed, setIsBannerDismissed] = useState(false)
   const [isBatchGhosting, setIsBatchGhosting] = useState(false)
+  const [schedulingGCalId, setSchedulingGCalId] = useState<string | null>(null)
+  const [gcalSuccessMsg, setGcalSuccessMsg] = useState<string | null>(null)
+
+  async function handleScheduleGCal(appId: string, daysAhead: number) {
+    try {
+      setSchedulingGCalId(appId)
+      setGcalSuccessMsg(null)
+      const targetDate = new Date()
+      targetDate.setDate(targetDate.getDate() + daysAhead)
+      const dateStr = targetDate.toISOString().split('T')[0]
+
+      const res = await scheduleCalendarFollowUp(appId, dateStr)
+      if (res.gcalWebUrl) {
+        window.open(res.gcalWebUrl, '_blank')
+      }
+      setGcalSuccessMsg(`Follow-up scheduled on Google Calendar!`)
+      router.refresh()
+    } catch (err: any) {
+      console.error('Failed to schedule calendar follow-up:', err)
+    } finally {
+      setSchedulingGCalId(null)
+    }
+  }
 
   // Stale applications for quick review
   const staleApps = useMemo(() => {
@@ -573,7 +596,20 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
               </div>
 
               {/* 4. Actions */}
-              <div className="flex items-center justify-end gap-2 w-full sm:w-28 shrink-0 self-end sm:self-center">
+              <div className="flex items-center justify-end gap-2 w-full sm:w-auto shrink-0 self-end sm:self-center">
+                <button
+                  type="button"
+                  title="Schedule Follow-up on Google Calendar"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleScheduleGCal(app.id, 5)
+                  }}
+                  disabled={schedulingGCalId === app.id}
+                  className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-950/40 hover:bg-blue-950/70 border border-blue-800/40 hover:border-blue-700/60 px-2.5 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>{schedulingGCalId === app.id ? 'Scheduling...' : 'GCal +5d'}</span>
+                </button>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -692,6 +728,46 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                 </div>
               </div>
             )}
+
+            {/* Google Calendar Follow-up Section in Drawer */}
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/30 to-indigo-950/20 border border-blue-900/40 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-blue-300 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                  Google Calendar Follow-up
+                </span>
+                {activeApp.nextFollowUpDate && (
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    Due: {format(new Date(activeApp.nextFollowUpDate), 'MMM d')}
+                  </span>
+                )}
+              </div>
+
+              {gcalSuccessMsg && (
+                <div className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                  <Check className="w-3 h-3 text-emerald-400" /> {gcalSuccessMsg}
+                </div>
+              )}
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { label: '+3 Days', days: 3 },
+                  { label: '+5 Days', days: 5 },
+                  { label: '+7 Days', days: 7 },
+                  { label: '+14 Days', days: 14 },
+                ].map((preset) => (
+                  <button
+                    key={preset.days}
+                    type="button"
+                    disabled={Boolean(schedulingGCalId)}
+                    onClick={() => handleScheduleGCal(activeApp.id, preset.days)}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-zinc-900/90 hover:bg-blue-600 hover:text-white text-zinc-300 border border-zinc-800 hover:border-blue-500 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                  >
+                    {schedulingGCalId === activeApp.id ? 'Scheduling...' : preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Quick Status Bar in Drawer */}
               <div className="space-y-2">

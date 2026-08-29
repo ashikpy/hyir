@@ -20,6 +20,9 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || "dev-google-client-id",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dev-google-client-secret",
+      scope: ["openid", "profile", "email", "https://www.googleapis.com/auth/calendar.events"],
+      accessType: "offline",
+      prompt: "consent",
     },
     linkedin: {
       clientId: process.env.LINKEDIN_CLIENT_ID || "dev-linkedin-client-id",

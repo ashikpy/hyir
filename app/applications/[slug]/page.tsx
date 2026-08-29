@@ -25,6 +25,7 @@ import { ApplicationActions } from "@/components/ui/application-actions"
 import { AddTimelineEventModal } from "@/components/ui/add-timeline-event-modal"
 import { StatusDropdown } from "@/components/ui/status-dropdown"
 import { EditableNotes } from "@/components/ui/editable-notes"
+import { FollowUpCard } from "@/components/ui/follow-up-card"
 
 import { requireUser } from "@/lib/auth-helpers"
 
@@ -209,28 +210,11 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
         {/* ================= RIGHT SIDEBAR SECTION (1/3) ================= */}
         <div className="space-y-6">
           
-          {/* Follow-up Reminder Card */}
-          <section className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-3">
-            <h3 className="text-xs font-semibold text-zinc-300">Follow-up</h3>
-            {application.nextFollowUpDate ? (
-              <div className="space-y-2">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-zinc-500">Next Scheduled For</span>
-                  <span className={`text-sm font-semibold ${
-                    isPast(new Date(application.nextFollowUpDate)) && !isToday(new Date(application.nextFollowUpDate))
-                      ? 'text-red-400'
-                      : isToday(new Date(application.nextFollowUpDate))
-                      ? 'text-amber-400'
-                      : 'text-zinc-200'
-                  }`}>
-                    {format(new Date(application.nextFollowUpDate), 'MMMM d, yyyy')}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-zinc-500">No follow-up scheduled.</p>
-            )}
-          </section>
+          {/* Follow-up Reminder Card with Google Calendar Integration */}
+          <FollowUpCard 
+            applicationId={application.id} 
+            nextFollowUpDate={application.nextFollowUpDate} 
+          />
 
           {/* Contact Information */}
           <section className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-900 space-y-3">

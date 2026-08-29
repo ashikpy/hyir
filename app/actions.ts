@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { ApplicationStatus, TimelineEventType, JobType, WorkplaceType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { requireUser, getCurrentUser } from '@/lib/auth-helpers'
+import { buildGoogleCalendarUrl, createGoogleCalendarApiEvent } from '@/lib/google-calendar'
 
 export async function createApplication(formData: FormData) {
   const companyName = formData.get('companyName') as string
@@ -775,4 +776,89 @@ export async function snoozeStaleApplication(id: string, days: number = 14) {
   revalidatePath('/triage')
 
   return { success: true }
+}
+
+export async function scheduleCalendarFollowUp(
+  applicationId: string,
+  targetDate: string,
+  options?: { timeOfDay?: string; note?: string }
+) {
+  const user = await requireUser()
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+  })
+
+  if (!app || app.userId !== user.id) {
+    throw new Error('Application not found or unauthorized')
+  }
+
+  const followUpDateTime = new Date(targetDate)
+  if (targetDate.length === 10) {
+    followUpDateTime.setHours(10, 0, 0, 0)
+  }
+
+  // 1. Update application in Prisma
+  await prisma.application.update({
+    where: { id: applicationId },
+    data: {
+      nextFollowUpDate: followUpDateTime,
+      updatedAt: new Date(),
+    },
+  })
+
+  // 2. Log timeline event
+  await prisma.timelineEvent.create({
+    data: {
+      applicationId,
+      eventType: 'FOLLOW_UP',
+      date: new Date(),
+      description: `Follow-up reminder scheduled for ${followUpDateTime.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })}${options?.note ? ` · ${options.note}` : ''}`,
+    },
+  })
+
+  // 3. Build Google Calendar description and URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/applications/${app.slug}`
+    : `http://localhost:3000/applications/${app.slug}`
+
+  const description = [
+    `Follow up on job application for ${app.roleTitle} at ${app.companyName}.`,
+    app.contactName ? `\nRecruiter: ${app.contactName} ${app.contactEmail ? `(${app.contactEmail})` : ''}` : '',
+    app.applicationUrl ? `\nJob Link: ${app.applicationUrl}` : '',
+    `\nView in Hyir: ${appUrl}`,
+    options?.note ? `\nNote: ${options.note}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const eventParams = {
+    title: `Follow up: ${app.roleTitle} @ ${app.companyName}`,
+    description,
+    startDate: followUpDateTime,
+    durationMinutes: 30,
+  }
+
+  // Try API sync if Google token exists
+  const apiSync = await createGoogleCalendarApiEvent(user.id, eventParams)
+
+  // Generate 1-click web intent URL
+  const gcalWebUrl = buildGoogleCalendarUrl(eventParams)
+
+  revalidatePath('/')
+  revalidatePath('/applications')
+  revalidatePath('/pipeline')
+  revalidatePath('/triage')
+  revalidatePath('/follow-ups')
+  revalidatePath(`/applications/${app.slug}`)
+
+  return {
+    success: true,
+    gcalWebUrl,
+    apiSynced: apiSync.success,
+    followUpDate: followUpDateTime.toISOString(),
+  }
 }
