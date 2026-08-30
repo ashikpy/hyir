@@ -3,16 +3,30 @@
 import { useState } from 'react'
 
 const GENERIC_JOB_HOSTS = [
+  'instahyre.com',
   'wellfound.com',
   'angel.co',
+  'naukri.com',
+  'hirist.com',
+  'cutshort.io',
+  'cuvette.tech',
+  'unstop.com',
+  'internshala.com',
+  'otta.com',
+  'ottacareers.com',
   'linkedin.com',
+  'indeed.com',
+  'glassdoor.com',
+  'ziprecruiter.com',
   'greenhouse.io',
+  'greenhouse-mail.io',
   'lever.co',
   'ashbyhq.com',
   'workday.com',
   'smartrecruiters.com',
   'bamboohr.com',
   'recruitee.com',
+  'workable.com',
 ]
 
 export function CompanyLogo({

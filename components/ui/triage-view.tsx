@@ -190,13 +190,36 @@ function getAppIssues(app: TriageApp): IssueTag[] {
   if (app.status === 'INTERVIEW' && !app.nextFollowUpDate) {
     tags.push({ label: 'No Interview Date', tier: 'warning', key: 'no_interview_date' })
   }
-  
+
   const staleInfo = isAppStale(app)
   if (staleInfo.isStale) {
     tags.push({ label: `Stale (${staleInfo.daysInactive}d)`, tier: 'warning', key: 'stale' })
   }
 
   return tags
+}
+
+export function extractAppSource(app: TriageApp): string | null {
+  if (app.notes) {
+    const match = app.notes.match(/Source:\s*([A-Za-z0-9\s.-]+)/i)
+    if (match && match[1]) return match[1].trim()
+  }
+  if (app.applicationUrl) {
+    const lower = app.applicationUrl.toLowerCase()
+    if (lower.includes('instahyre')) return 'Instahyre'
+    if (lower.includes('wellfound') || lower.includes('angel.co')) return 'Wellfound'
+    if (lower.includes('linkedin')) return 'LinkedIn'
+    if (lower.includes('naukri')) return 'Naukri'
+    if (lower.includes('hirist')) return 'Hirist'
+    if (lower.includes('cutshort')) return 'Cutshort'
+    if (lower.includes('otta')) return 'Otta'
+    if (lower.includes('cuvette')) return 'Cuvette'
+    if (lower.includes('greenhouse')) return 'Greenhouse'
+    if (lower.includes('lever')) return 'Lever'
+    if (lower.includes('ashby')) return 'Ashby'
+    if (lower.includes('workday')) return 'Workday'
+  }
+  return null
 }
 
 export function TriageView({ applications }: { applications: TriageApp[] }) {
@@ -561,10 +584,17 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                   url={app.applicationUrl}
                   className="w-8 h-8 rounded-lg shrink-0"
                 />
-                <div className="truncate">
-                  <span className="font-semibold text-xs text-zinc-200 group-hover:text-white transition-colors truncate block">
-                    {app.companyName}
-                  </span>
+                <div className="truncate min-w-0">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-semibold text-xs text-zinc-200 group-hover:text-white transition-colors truncate">
+                      {app.companyName}
+                    </span>
+                    {extractAppSource(app) && (
+                      <span className="px-1.5 py-0.2 text-[9px] font-medium bg-zinc-900 border border-zinc-800 text-zinc-400 rounded shrink-0">
+                        {extractAppSource(app)}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[11px] text-zinc-400 truncate block mt-0.5">{app.roleTitle}</span>
                 </div>
               </div>
@@ -664,10 +694,17 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                   className="w-9 h-9 rounded-xl shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-semibold text-white truncate" title={activeApp.companyName}>
-                    {activeApp.companyName}
-                  </h3>
-                  <p className="text-xs text-zinc-400 truncate" title={activeApp.roleTitle}>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-white truncate" title={activeApp.companyName}>
+                      {activeApp.companyName}
+                    </h3>
+                    {extractAppSource(activeApp) && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 shrink-0">
+                        via {extractAppSource(activeApp)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-400 truncate mt-0.5" title={activeApp.roleTitle}>
                     {activeApp.roleTitle}
                   </p>
                 </div>
