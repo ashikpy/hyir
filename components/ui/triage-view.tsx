@@ -190,7 +190,7 @@ function getAppIssues(app: TriageApp): IssueTag[] {
     tags.push({ label: 'No Salary', tier: 'warning', key: 'no_salary' })
   }
   if (!app.source && !extractAppSource(app)) {
-    tags.push({ label: 'Missing Source', tier: 'warning', key: 'no_source' })
+    tags.push({ label: 'Missing Source', tier: 'blocker', key: 'no_source' })
   }
   if (app.status === 'INTERVIEW' && !app.nextFollowUpDate) {
     tags.push({ label: 'No Interview Date', tier: 'warning', key: 'no_interview_date' })
@@ -533,6 +533,19 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
           <button
             type="button"
+            onClick={() => setFilter('NO_SOURCE')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
+              filter === 'NO_SOURCE'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-semibold'
+                : 'text-zinc-400 hover:text-purple-300 hover:bg-zinc-900/50'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+            <span>Missing Source ({counts.noSource})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setFilter('NO_CONTACT')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
               filter === 'NO_CONTACT'
@@ -553,18 +566,6 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
             }`}
           >
             <span>No Salary ({counts.noSalary})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilter('NO_SOURCE')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-              filter === 'NO_SOURCE'
-                ? 'bg-zinc-800 text-zinc-200 border border-zinc-700 font-semibold'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
-            }`}
-          >
-            <span>Missing Source ({counts.noSource})</span>
           </button>
         </div>
 
@@ -868,6 +869,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                   <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
                     <Briefcase className="w-3.5 h-3.5 text-zinc-500" />
                     <span>Source / Broker</span>
+                    {!formSource && <span className="text-red-400 font-normal">*</span>}
                   </label>
                   {formSource && (
                     <span className="text-[10px] text-zinc-400 font-mono">
