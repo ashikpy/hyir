@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
@@ -57,152 +57,6 @@ const statusColors: Record<ApplicationStatus, { bg: string; text: string; border
   WITHDRAWN: { bg: 'bg-zinc-900/60', text: 'text-zinc-400', border: 'border-zinc-800' },
 }
 
-/**
- * Custom Dropdown with Company Logos & Search for linking applications
- */
-function ApplicationPickerDropdown({
-  currentAppId,
-  existingApps,
-  onSelect,
-}: {
-  currentAppId?: string
-  existingApps: ExistingAppOption[]
-  onSelect: (appId: string) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const selectedApp = existingApps.find((a) => a.id === currentAppId)
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
-
-  const filteredApps = existingApps.filter(
-    (a) =>
-      a.companyName.toLowerCase().includes(search.toLowerCase()) ||
-      a.roleTitle.toLowerCase().includes(search.toLowerCase())
-  )
-
-  return (
-    <div className="relative inline-block" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          setIsOpen(!isOpen)
-        }}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-zinc-200 transition-colors cursor-pointer max-w-[280px]"
-      >
-        {selectedApp ? (
-          <>
-            <CompanyLogo name={selectedApp.companyName} className="w-4 h-4 rounded shrink-0" />
-            <span className="font-semibold text-zinc-100 truncate">{selectedApp.companyName}</span>
-            {selectedApp.roleTitle && (
-              <span className="text-zinc-400 truncate text-[11px]">({selectedApp.roleTitle})</span>
-            )}
-          </>
-        ) : (
-          <>
-            <span className="text-zinc-400">➕</span>
-            <span className="text-zinc-300 truncate">Create as New Draft</span>
-          </>
-        )}
-        <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0 ml-0.5" />
-      </button>
-
-      {isOpen && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="absolute left-0 top-full mt-1.5 z-50 w-72 bg-[#0c0c0e] border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col p-1.5 animate-in fade-in zoom-in-95 duration-100"
-          style={{ backgroundColor: '#0c0c0e' }}
-        >
-          {existingApps.length > 5 && (
-            <div className="p-1 pb-1.5 border-b border-zinc-850 mb-1 flex items-center gap-1.5">
-              <Search className="w-3.5 h-3.5 text-zinc-500 shrink-0 ml-1" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search applications..."
-                className="w-full bg-transparent px-1 py-0.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none"
-                autoFocus
-              />
-            </div>
-          )}
-
-          <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
-            {/* Create as New Option */}
-            <button
-              type="button"
-              onClick={() => {
-                onSelect('__NEW__')
-                setIsOpen(false)
-              }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
-                !currentAppId
-                  ? 'bg-zinc-800/80 text-white font-medium'
-                  : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-zinc-400">➕</span>
-                <span className="truncate">Create as New Application Draft</span>
-              </div>
-              {!currentAppId && <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-            </button>
-
-            <div className="px-2.5 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-              Your Applications ({existingApps.length})
-            </div>
-
-            {filteredApps.map((app) => {
-              const isCurr = app.id === currentAppId
-              return (
-                <button
-                  key={app.id}
-                  type="button"
-                  onClick={() => {
-                    onSelect(app.id)
-                    setIsOpen(false)
-                  }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
-                    isCurr
-                      ? 'bg-zinc-800/80 text-white font-medium'
-                      : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <CompanyLogo name={app.companyName} className="w-4 h-4 rounded shrink-0" />
-                    <div className="min-w-0 truncate">
-                      <span className="font-medium text-zinc-200">{app.companyName}</span>
-                      {app.roleTitle && (
-                        <span className="text-zinc-500 text-[11px] ml-1.5 truncate">
-                          ({app.roleTitle})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {isCurr && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
@@ -214,6 +68,8 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const [existingApps, setExistingApps] = useState<ExistingAppOption[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null)
+  const [activePickerCandidateId, setActivePickerCandidateId] = useState<string | null>(null)
+  const [pickerSearch, setPickerSearch] = useState('')
   const [totalScanned, setTotalScanned] = useState(0)
   const [appliedStats, setAppliedStats] = useState<{ updated: number; created: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -267,6 +123,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
     setHasScanned(true)
     setAppliedStats(null)
     setExpandedEmailId(null)
+    setActivePickerCandidateId(null)
     startScanTransition(async () => {
       try {
         const res = await scanGmailInboxPreviewAction({ daysBack: 14 })
@@ -336,10 +193,17 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
         }
       })
     )
+    setActivePickerCandidateId(null)
+    setPickerSearch('')
   }
 
   function toggleExpandEmail(id: string) {
     setExpandedEmailId((prev) => (prev === id ? null : id))
+  }
+
+  function toggleAppPicker(candidateId: string) {
+    setActivePickerCandidateId((prev) => (prev === candidateId ? null : candidateId))
+    setPickerSearch('')
   }
 
   function handleSelectAll() {
@@ -572,7 +436,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             </div>
           )}
 
-          {/* Candidate Review List with Expandable Email & Custom Dropdown with Logos */}
+          {/* Candidate Review List */}
           {hasScanned && !isScanning && !appliedStats && !error && (
             <div className="space-y-4">
               {/* Header & Controls */}
@@ -605,18 +469,26 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                   <p className="text-[11px] text-zinc-500">Your job pipeline is up to date!</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[52vh] overflow-y-auto pr-1">
                   {candidates.map((item, idx) => {
                     const isSelected = selectedIds.has(item.id)
                     const isExpanded = expandedEmailId === item.id
+                    const isPickerOpen = activePickerCandidateId === item.id
                     const isUpdate = item.actionType === 'UPDATE_EXISTING'
+                    const matchedApp = existingApps.find((a) => a.id === item.matchedApplicationId)
                     const senderDisplay =
                       item.recruiterName || item.fromName || item.recruiterEmail || item.fromEmail || 'Recruiter'
+
+                    const filteredApps = existingApps.filter(
+                      (a) =>
+                        a.companyName.toLowerCase().includes(pickerSearch.toLowerCase()) ||
+                        a.roleTitle.toLowerCase().includes(pickerSearch.toLowerCase())
+                    )
 
                     return (
                       <div
                         key={`${item.id}-${idx}`}
-                        className={`rounded-xl border transition-all overflow-hidden ${
+                        className={`rounded-xl border transition-all ${
                           isSelected
                             ? 'bg-zinc-900/90 border-zinc-750 shadow-xs'
                             : 'bg-zinc-950/40 border-zinc-850 opacity-80 hover:opacity-100 hover:border-zinc-800'
@@ -689,17 +561,131 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                             {item.summary}
                           </p>
 
-                          {/* Custom Link to Application Selector with Logos */}
-                          <div className="flex items-center gap-2 pl-6.5 pt-0.5">
-                            <Link2 className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                            <label className="text-[11px] text-zinc-400 shrink-0 font-medium">
-                              Link to:
-                            </label>
-                            <ApplicationPickerDropdown
-                              currentAppId={item.matchedApplicationId}
-                              existingApps={existingApps}
-                              onSelect={(appId) => handleLinkAppChange(item.id, appId)}
-                            />
+                          {/* Inline Link to Application Trigger */}
+                          <div className="pl-6.5 pt-0.5 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Link2 className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                              <span className="text-[11px] text-zinc-400 shrink-0 font-medium">
+                                Link to:
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => toggleAppPicker(item.id)}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs transition-colors cursor-pointer max-w-[320px] ${
+                                  isPickerOpen
+                                    ? 'bg-zinc-800 border-zinc-600 text-white'
+                                    : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-200'
+                                }`}
+                              >
+                                {matchedApp ? (
+                                  <>
+                                    <CompanyLogo
+                                      name={matchedApp.companyName}
+                                      className="w-4 h-4 rounded shrink-0"
+                                    />
+                                    <span className="font-semibold text-zinc-100 truncate">
+                                      {matchedApp.companyName}
+                                    </span>
+                                    {matchedApp.roleTitle && (
+                                      <span className="text-zinc-400 truncate text-[11px]">
+                                        ({matchedApp.roleTitle})
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-zinc-400">➕</span>
+                                    <span className="text-zinc-300 truncate">Create as New Draft</span>
+                                  </>
+                                )}
+                                {isPickerOpen ? (
+                                  <ChevronUp className="w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1" />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1" />
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Inline Application Picker Drawer (Never clipped!) */}
+                            {isPickerOpen && (
+                              <div className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 animate-in fade-in duration-150">
+                                {existingApps.length > 5 && (
+                                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                                    <Search className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                    <input
+                                      type="text"
+                                      value={pickerSearch}
+                                      onChange={(e) => setPickerSearch(e.target.value)}
+                                      placeholder="Search your applications..."
+                                      className="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                                      autoFocus
+                                    />
+                                  </div>
+                                )}
+
+                                <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                                  {/* Create New Draft Option */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleLinkAppChange(item.id, '__NEW__')}
+                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                                      !item.matchedApplicationId
+                                        ? 'bg-zinc-800 text-white font-medium'
+                                        : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-zinc-400">➕</span>
+                                      <span className="truncate">Create as New Application Draft</span>
+                                    </div>
+                                    {!item.matchedApplicationId && (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                    )}
+                                  </button>
+
+                                  <div className="px-2 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                                    Your Applications ({existingApps.length})
+                                  </div>
+
+                                  {filteredApps.map((app) => {
+                                    const isCurr = app.id === item.matchedApplicationId
+                                    return (
+                                      <button
+                                        key={app.id}
+                                        type="button"
+                                        onClick={() => handleLinkAppChange(item.id, app.id)}
+                                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                                          isCurr
+                                            ? 'bg-zinc-800 text-white font-medium'
+                                            : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <CompanyLogo
+                                            name={app.companyName}
+                                            className="w-4 h-4 rounded shrink-0"
+                                          />
+                                          <div className="min-w-0 truncate">
+                                            <span className="font-medium text-zinc-200">
+                                              {app.companyName}
+                                            </span>
+                                            {app.roleTitle && (
+                                              <span className="text-zinc-500 text-[11px] ml-1.5 truncate">
+                                                ({app.roleTitle})
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {isCurr && (
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                        )}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Email metadata bar with expand toggle */}
