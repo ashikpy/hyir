@@ -951,9 +951,30 @@ export async function scanGmailInboxPreviewAction(options?: {
       roleTitle: true,
       status: true,
       contactEmail: true,
+      notes: true,
     },
     orderBy: { updatedAt: 'desc' },
   })
+
+  // Fetch already synced message IDs from timeline events to avoid showing duplicates
+  const existingTimelineEvents = await prisma.timelineEvent.findMany({
+    where: { application: { userId: user.id } },
+    select: { description: true },
+  })
+
+  const syncedMessageIds = new Set<string>()
+  for (const ev of existingTimelineEvents) {
+    if (ev.description) {
+      const match = ev.description.match(/\[email_id:([a-zA-Z0-9_-]+)\]/)
+      if (match && match[1]) syncedMessageIds.add(match[1])
+    }
+  }
+  for (const app of allUserApps) {
+    if (app.notes) {
+      const match = app.notes.match(/\[email_id:([a-zA-Z0-9_-]+)\]/)
+      if (match && match[1]) syncedMessageIds.add(match[1])
+    }
+  }
 
   const clientExistingApps = allUserApps.map((a) => ({
     id: a.id,
@@ -1001,6 +1022,11 @@ export async function scanGmailInboxPreviewAction(options?: {
     const item = jobEmails[idx]
     const cleanCompany = item.companyName.trim()
     if (!cleanCompany) continue
+
+    // Skip already synced messages!
+    if (syncedMessageIds.has(item.messageId)) {
+      continue
+    }
 
     const cleanLower = cleanCompany.toLowerCase()
     const cleanAlpha = cleanLower.replace(/[^a-z0-9]/g, '')
@@ -1142,7 +1168,7 @@ export async function applyInboxUpdatesAction(
             applicationId: existing.id,
             eventType: isStatusChanged ? 'STATUS_CHANGE' : 'CUSTOM',
             date: originalDate,
-            description: `${item.summary} · (Email: "${item.originalSubject}")`,
+            description: `[email_id:${item.messageId}] ${item.summary} · (Email: "${item.originalSubject}")`,
           },
         })
       })
@@ -1174,7 +1200,7 @@ export async function applyInboxUpdatesAction(
           contactName: item.recruiterName || null,
           contactEmail: item.recruiterEmail || null,
           nextFollowUpDate: followUpDate,
-          notes: `Imported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
+          notes: `[email_id:${item.messageId}]\nImported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
         },
       })
 
@@ -1183,7 +1209,7 @@ export async function applyInboxUpdatesAction(
           applicationId: newApp.id,
           eventType: 'STATUS_CHANGE',
           date: originalDate,
-          description: `Imported from email: "${item.originalSubject}" · ${item.summary}`,
+          description: `[email_id:${item.messageId}] Discovered from email: "${item.originalSubject}" · ${item.summary}`,
         },
       })
 
