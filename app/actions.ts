@@ -881,6 +881,7 @@ export interface SyncCandidateItem {
   recruiterEmail?: string | null
   fromName?: string | null
   fromEmail?: string | null
+  sourcePlatform?: string | null
   originalSubject: string
   date: string
   selected: boolean
@@ -1075,6 +1076,7 @@ export async function scanGmailInboxPreviewAction(options?: {
         recruiterEmail: item.recruiterEmail || null,
         fromName: item.fromName || null,
         fromEmail: item.fromEmail || null,
+        sourcePlatform: item.sourcePlatform || null,
         originalSubject: item.originalSubject,
         date: item.originalDate.toISOString(),
         selected: true, // Auto-selected for matching existing applications
@@ -1097,6 +1099,7 @@ export async function scanGmailInboxPreviewAction(options?: {
         recruiterEmail: item.recruiterEmail || null,
         fromName: item.fromName || null,
         fromEmail: item.fromEmail || null,
+        sourcePlatform: item.sourcePlatform || null,
         originalSubject: item.originalSubject,
         date: item.originalDate.toISOString(),
         selected: false, // Unselected by default for new unknown applications
@@ -1196,6 +1199,8 @@ export async function applyInboxUpdatesAction(
         followUpDate = new Date(item.interviewDateTime)
       }
 
+      const sourcePrefix = item.sourcePlatform ? `Source: ${item.sourcePlatform}\n` : ''
+
       const newApp = await prisma.application.create({
         data: {
           userId: user.id,
@@ -1207,7 +1212,7 @@ export async function applyInboxUpdatesAction(
           contactName: item.recruiterName || null,
           contactEmail: item.recruiterEmail || null,
           nextFollowUpDate: followUpDate,
-          notes: `[email_id:${item.messageId}]\nImported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
+          notes: `[email_id:${item.messageId}]\n${sourcePrefix}Imported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
         },
       })
 
@@ -1223,6 +1228,13 @@ export async function applyInboxUpdatesAction(
       createdCount++
     }
   }
+
+  try {
+    revalidatePath('/')
+    revalidatePath('/applications')
+    revalidatePath('/triage')
+    revalidatePath('/pipeline')
+  } catch {}
 
   try {
     revalidatePath('/')

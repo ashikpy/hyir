@@ -15,12 +15,85 @@ export interface ParsedJobUpdate {
   recruiterEmail?: string | null;
   fromName?: string | null;
   fromEmail?: string | null;
+  sourcePlatform?: string | null;
   actionRequired: boolean;
   suggestedAction?: string | null;
   originalSubject: string;
   originalDate: Date;
   emailSnippet?: string;
   emailBody?: string;
+}
+
+export const BROKER_DOMAINS = [
+  "instahyre.com",
+  "wellfound.com",
+  "angel.co",
+  "otta.com",
+  "ottacareers.com",
+  "naukri.com",
+  "hirist.com",
+  "foundit.in",
+  "cutshort.io",
+  "ycombinator.com",
+  "topstartups.io",
+  "greenhouse.io",
+  "greenhouse-mail.io",
+  "lever.co",
+  "ashbyhq.com",
+  "workday.com",
+  "smartrecruiters.com",
+  "breezy.hr",
+  "jobvite.com",
+  "workable.com",
+  "linkedin.com",
+  "unstop.com",
+  "cuvette.tech",
+  "internshala.com",
+];
+
+export function isBrokerOrProxyEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const lower = email.toLowerCase().trim();
+  const domain = lower.split("@")[1] || "";
+
+  if (BROKER_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`))) {
+    return true;
+  }
+
+  if (
+    lower.startsWith("no-reply@") ||
+    lower.startsWith("noreply@") ||
+    lower.startsWith("notifications@") ||
+    lower.startsWith("notification@") ||
+    lower.startsWith("alerts@") ||
+    lower.startsWith("mailer@") ||
+    lower.startsWith("system@") ||
+    lower.startsWith("talent@") ||
+    lower.startsWith("updates@") ||
+    lower.startsWith("invitations@")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function detectBrokerPlatform(fromEmail: string, fromName: string, subject: string): string | null {
+  const combined = `${fromEmail} ${fromName} ${subject}`.toLowerCase();
+  if (combined.includes("instahyre")) return "Instahyre";
+  if (combined.includes("wellfound") || combined.includes("angel.co")) return "Wellfound";
+  if (combined.includes("otta")) return "Otta";
+  if (combined.includes("hirist")) return "Hirist";
+  if (combined.includes("naukri")) return "Naukri";
+  if (combined.includes("cutshort")) return "Cutshort";
+  if (combined.includes("cuvette")) return "Cuvette";
+  if (combined.includes("internshala")) return "Internshala";
+  if (combined.includes("greenhouse")) return "Greenhouse";
+  if (combined.includes("lever")) return "Lever";
+  if (combined.includes("ashby")) return "Ashby";
+  if (combined.includes("workday")) return "Workday";
+  if (combined.includes("linkedin")) return "LinkedIn";
+  return null;
 }
 
 const IGNORED_DOMAINS = [
@@ -209,6 +282,16 @@ export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
   }
 
   const isJobRelated = detectedStatus !== null && company !== "Company" && !company.match(/^(Tue|Mon|Wed|Thu|Fri|Sat|Sun)/i);
+  const brokerPlatform = detectBrokerPlatform(email.fromEmail, email.fromName, email.subject);
+
+  let cleanRecruiterEmail: string | null = null;
+  if (email.fromEmail && !isBrokerOrProxyEmail(email.fromEmail)) {
+    cleanRecruiterEmail = email.fromEmail;
+  }
+  let cleanRecruiterName: string | null = null;
+  if (email.fromName && !isBrokerOrProxyEmail(email.fromEmail) && !email.fromName.toLowerCase().includes("notification") && !email.fromName.toLowerCase().includes("team")) {
+    cleanRecruiterName = email.fromName;
+  }
 
   return {
     messageId: email.id,
@@ -220,10 +303,11 @@ export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
     confidence,
     summary: summary || `Correspondence regarding application at ${company}.`,
     interviewDateTime: null,
-    recruiterName: email.fromName || null,
-    recruiterEmail: email.fromEmail || null,
+    recruiterName: cleanRecruiterName,
+    recruiterEmail: cleanRecruiterEmail,
     fromName: email.fromName || null,
     fromEmail: email.fromEmail || null,
+    sourcePlatform: brokerPlatform,
     actionRequired,
     suggestedAction,
     originalSubject: email.subject,
@@ -332,6 +416,23 @@ Return ONLY valid JSON with this exact structure:
       parsed.companyName !== "Company" &&
       !parsed.companyName.match(/^(Linkedin|Reddit|Naukri|Google|Youtube|Twitter|Tue|Mon|Wed|Thu|Fri|Sat|Sun)/i);
 
+    const brokerPlatform = detectBrokerPlatform(email.fromEmail, email.fromName, email.subject);
+
+    // Only set recruiter email if it's a real human direct email, NOT a broker or proxy
+    let cleanRecruiterEmail: string | null = null;
+    if (parsed.recruiterEmail && !isBrokerOrProxyEmail(parsed.recruiterEmail)) {
+      cleanRecruiterEmail = parsed.recruiterEmail;
+    } else if (email.fromEmail && !isBrokerOrProxyEmail(email.fromEmail)) {
+      cleanRecruiterEmail = email.fromEmail;
+    }
+
+    let cleanRecruiterName: string | null = null;
+    if (parsed.recruiterName && !parsed.recruiterName.toLowerCase().includes("notification") && !parsed.recruiterName.toLowerCase().includes("team")) {
+      cleanRecruiterName = parsed.recruiterName;
+    } else if (email.fromName && !isBrokerOrProxyEmail(email.fromEmail) && !email.fromName.toLowerCase().includes("notification") && !email.fromName.toLowerCase().includes("team")) {
+      cleanRecruiterName = email.fromName;
+    }
+
     return {
       messageId: email.id,
       threadId: email.threadId,
@@ -342,10 +443,11 @@ Return ONLY valid JSON with this exact structure:
       confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.9,
       summary: parsed.summary || `Update from ${parsed.companyName || email.fromName}`,
       interviewDateTime: parsed.interviewDateTime || null,
-      recruiterName: parsed.recruiterName || email.fromName || null,
-      recruiterEmail: parsed.recruiterEmail || email.fromEmail || null,
+      recruiterName: cleanRecruiterName,
+      recruiterEmail: cleanRecruiterEmail,
       fromName: email.fromName || null,
       fromEmail: email.fromEmail || null,
+      sourcePlatform: brokerPlatform,
       actionRequired: Boolean(parsed.actionRequired),
       suggestedAction: parsed.suggestedAction || null,
       originalSubject: email.subject,
