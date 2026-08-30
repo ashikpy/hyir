@@ -5,6 +5,8 @@ import { ApplicationStatus, TimelineEventType, JobType, WorkplaceType } from '@p
 import { revalidatePath } from 'next/cache'
 import { requireUser, getCurrentUser } from '@/lib/auth-helpers'
 import { buildGoogleCalendarUrl, createGoogleCalendarApiEvent } from '@/lib/google-calendar'
+import { fetchRecentJobEmails } from '@/lib/gmail'
+import { parseJobEmailWithAI, ParsedJobUpdate } from '@/lib/email-parser'
 
 export async function createApplication(formData: FormData) {
   const companyName = formData.get('companyName') as string
@@ -862,5 +864,253 @@ export async function scheduleCalendarFollowUp(
     gcalWebUrl,
     apiSynced: apiSync.success,
     followUpDate: followUpDateTime.toISOString(),
+  }
+}
+
+export interface SyncInboxResultItem {
+  id: string
+  companyName: string
+  roleTitle?: string | null
+  status: ApplicationStatus
+  previousStatus?: ApplicationStatus | null
+  summary: string
+  isNew: boolean
+  interviewScheduled: boolean
+  originalSubject: string
+  date: string
+}
+
+export interface SyncInboxResponse {
+  success: boolean
+  error?: string
+  totalScanned: number
+  jobRelatedCount: number
+  updatedCount: number
+  createdCount: number
+  items: SyncInboxResultItem[]
+}
+
+export async function checkGmailConnectionStatus(): Promise<{
+  isConnected: boolean
+  email?: string
+}> {
+  const user = await getCurrentUser()
+  if (!user) return { isConnected: false }
+
+  const account = await prisma.account.findFirst({
+    where: {
+      userId: user.id,
+      providerId: 'google',
+    },
+    select: { id: true, accessToken: true },
+  })
+
+  return {
+    isConnected: Boolean(account?.accessToken),
+    email: user.email,
+  }
+}
+
+export async function syncGmailInboxAction(options?: {
+  daysBack?: number
+}): Promise<SyncInboxResponse> {
+  const user = await requireUser()
+  const { daysBack = 14 } = options || {}
+
+  // 1. Fetch recent emails matching recruitment criteria
+  const emailRes = await fetchRecentJobEmails(user.id, { daysBack, maxResults: 20 })
+
+  if (!emailRes.success) {
+    return {
+      success: false,
+      error: emailRes.error || 'Failed to access Gmail. Please ensure Google permissions are granted.',
+      totalScanned: 0,
+      jobRelatedCount: 0,
+      updatedCount: 0,
+      createdCount: 0,
+      items: [],
+    }
+  }
+
+  const rawEmails = emailRes.emails
+  if (rawEmails.length === 0) {
+    return {
+      success: true,
+      totalScanned: 0,
+      jobRelatedCount: 0,
+      updatedCount: 0,
+      createdCount: 0,
+      items: [],
+    }
+  }
+
+  // 2. Parse emails with Gemini AI / Heuristic fallback in parallel
+  const parsePromises = rawEmails.map((e) => parseJobEmailWithAI(e))
+  const parsedResults = await Promise.all(parsePromises)
+
+  const jobEmails = parsedResults.filter((p) => p.isJobRelated && p.companyName && p.companyName !== 'Company')
+
+  const processedItems: SyncInboxResultItem[] = []
+  let updatedCount = 0
+  let createdCount = 0
+
+  // 3. Process each job email against the database
+  for (const item of jobEmails) {
+    const cleanCompany = item.companyName.trim()
+    if (!cleanCompany) continue
+
+    // Search for existing application by company name
+    const existing = await prisma.application.findFirst({
+      where: {
+        userId: user.id,
+        OR: [
+          { companyName: { equals: cleanCompany, mode: 'insensitive' as const } },
+          { companyName: { contains: cleanCompany, mode: 'insensitive' as const } },
+          ...(item.recruiterEmail ? [{ contactEmail: { equals: item.recruiterEmail, mode: 'insensitive' as const } }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        slug: true,
+        companyName: true,
+        roleTitle: true,
+        status: true,
+        contactName: true,
+        contactEmail: true,
+      },
+    })
+
+    let interviewScheduled = false
+
+    if (existing) {
+      const prevStatus = existing.status
+      const targetStatus = item.detectedStatus || prevStatus
+      const isStatusChanged = item.detectedStatus !== null && item.detectedStatus !== prevStatus
+
+      // Schedule calendar event if interview detected
+      let followUpDate: Date | undefined = undefined
+      if (item.interviewDateTime) {
+        followUpDate = new Date(item.interviewDateTime)
+        interviewScheduled = true
+
+        try {
+          await createGoogleCalendarApiEvent(user.id, {
+            title: `Interview: ${existing.roleTitle} @ ${existing.companyName}`,
+            description: `${item.summary}\nRecruiter: ${item.recruiterName || ''} (${item.recruiterEmail || ''})`,
+            startDate: followUpDate,
+            durationMinutes: 45,
+          })
+        } catch {
+          // Calendar event creation is best-effort
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.application.update({
+          where: { id: existing.id },
+          data: {
+            status: targetStatus,
+            ...(followUpDate ? { nextFollowUpDate: followUpDate } : {}),
+            ...(item.recruiterName && !existing.contactName ? { contactName: item.recruiterName } : {}),
+            ...(item.recruiterEmail && !existing.contactEmail ? { contactEmail: item.recruiterEmail } : {}),
+          },
+        })
+
+        await tx.timelineEvent.create({
+          data: {
+            applicationId: existing.id,
+            eventType: isStatusChanged ? 'STATUS_CHANGE' : 'CUSTOM',
+            date: item.originalDate || new Date(),
+            description: `${item.summary} · (Email: "${item.originalSubject}")`,
+          },
+        })
+      })
+
+      updatedCount++
+      processedItems.push({
+        id: existing.id,
+        companyName: existing.companyName,
+        roleTitle: existing.roleTitle,
+        status: targetStatus,
+        previousStatus: prevStatus,
+        summary: item.summary,
+        isNew: false,
+        interviewScheduled,
+        originalSubject: item.originalSubject,
+        date: item.originalDate.toISOString(),
+      })
+    } else {
+      // Create new application draft from email
+      const baseSlug = `${cleanCompany.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${(item.roleTitle || 'role').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+      const existingCount = await prisma.application.count({
+        where: { slug: { startsWith: baseSlug } },
+      })
+      const slug = existingCount > 0 ? `${baseSlug}-${existingCount + 1}-${Math.floor(Math.random() * 1000)}` : baseSlug
+      const initialStatus = item.detectedStatus || ApplicationStatus.APPLIED
+
+      let followUpDate: Date | null = null
+      if (item.interviewDateTime) {
+        followUpDate = new Date(item.interviewDateTime)
+        interviewScheduled = true
+      }
+
+      const newApp = await prisma.application.create({
+        data: {
+          userId: user.id,
+          slug,
+          companyName: cleanCompany,
+          roleTitle: item.roleTitle || 'Applicant / Role',
+          status: initialStatus,
+          dateApplied: item.originalDate,
+          contactName: item.recruiterName || null,
+          contactEmail: item.recruiterEmail || null,
+          nextFollowUpDate: followUpDate,
+          notes: `Auto-imported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
+        },
+      })
+
+      await prisma.timelineEvent.create({
+        data: {
+          applicationId: newApp.id,
+          eventType: 'STATUS_CHANGE',
+          date: item.originalDate || new Date(),
+          description: `Discovered from email: "${item.originalSubject}" · ${item.summary}`,
+        },
+      })
+
+      createdCount++
+      processedItems.push({
+        id: newApp.id,
+        companyName: cleanCompany,
+        roleTitle: item.roleTitle || 'Applicant / Role',
+        status: initialStatus,
+        previousStatus: null,
+        summary: item.summary,
+        isNew: true,
+        interviewScheduled,
+        originalSubject: item.originalSubject,
+        date: item.originalDate.toISOString(),
+      })
+    }
+  }
+
+  try {
+    revalidatePath('/')
+    revalidatePath('/applications')
+    revalidatePath('/pipeline')
+    revalidatePath('/triage')
+    revalidatePath('/follow-ups')
+    revalidatePath('/analytics')
+  } catch {
+    // Ignore outside Next request context
+  }
+
+  return {
+    success: true,
+    totalScanned: rawEmails.length,
+    jobRelatedCount: jobEmails.length,
+    updatedCount,
+    createdCount,
+    items: processedItems,
   }
 }

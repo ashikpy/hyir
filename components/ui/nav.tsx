@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ArrowUpDown, Search } from 'lucide-react'
+import { ArrowUpDown, Search, Sparkles } from 'lucide-react'
 import { ImportExportModal } from './import-export-modal'
+import { InboxSyncModal } from './inbox-sync-modal'
 import { HyirLogo } from './hyr-logo'
 import { getTriageCount } from '@/app/actions'
 
@@ -21,6 +22,7 @@ const items = [
 export function Nav() {
   const pathname = usePathname()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isInboxSyncOpen, setIsInboxSyncOpen] = useState(false)
   const [triageCount, setTriageCount] = useState<number | null>(null)
 
   useEffect(() => {
@@ -88,7 +90,21 @@ export function Nav() {
           )
         })}
 
-        <div className="pt-4 mt-2 border-t border-zinc-900/80">
+        <div className="pt-4 mt-2 border-t border-zinc-900/80 space-y-1">
+          <button
+            type="button"
+            onClick={() => setIsInboxSyncOpen(true)}
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md text-amber-400/90 hover:text-amber-300 hover:bg-amber-950/20 border border-transparent hover:border-amber-900/30 transition-all text-left cursor-pointer group"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span>Sync Inbox</span>
+            </div>
+            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300/80 border border-amber-500/20">
+              AI
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
@@ -99,6 +115,13 @@ export function Nav() {
           </button>
         </div>
       </nav>
+
+      {isInboxSyncOpen && (
+        <InboxSyncModal
+          isOpen={isInboxSyncOpen}
+          onClose={() => setIsInboxSyncOpen(false)}
+        />
+      )}
 
       {isModalOpen && (
         <ImportExportModal
