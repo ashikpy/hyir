@@ -823,6 +823,8 @@ export async function scheduleCalendarFollowUp(
   // 3. Build Google Calendar description and URL
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     ? `${process.env.NEXT_PUBLIC_APP_URL}/applications/${app.slug}`
+    : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}/applications/${app.slug}`
     : `http://localhost:3000/applications/${app.slug}`
 
   const description = [
