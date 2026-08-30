@@ -19,33 +19,81 @@ export interface ParsedJobUpdate {
   originalDate: Date;
 }
 
+const IGNORED_DOMAINS = [
+  "redditmail.com",
+  "reddit.com",
+  "quora.com",
+  "medium.com",
+  "youtube.com",
+  "facebookmail.com",
+  "twitter.com",
+  "x.com",
+  "github.com",
+  "slack.com",
+  "discord.com",
+];
+
+const IGNORED_SENDERS = [
+  "invitations@linkedin.com",
+  "updates@linkedin.com",
+  "notifications@linkedin.com",
+  "messages-noreply@linkedin.com",
+  "jobalerts-noreply@linkedin.com",
+  "calendar-notification@google.com",
+  "no-reply@accounts.google.com",
+];
+
+function isIgnoredEmail(fromEmail: string, subject: string): boolean {
+  const fromLower = fromEmail.toLowerCase();
+  const subjLower = subject.toLowerCase();
+
+  // Ignored senders / newsletters
+  if (IGNORED_SENDERS.some((s) => fromLower.includes(s))) return true;
+  if (IGNORED_DOMAINS.some((d) => fromLower.includes(`@${d}`) || fromLower.includes(`.${d}`))) return true;
+
+  // Social networking / non-job outreach
+  if (subjLower.includes("accepted your invitation") || subjLower.includes("explore their network") || subjLower.includes("view connections")) {
+    return true;
+  }
+
+  // Generic automated system newsletters
+  if (subjLower.includes("security alert") || subjLower.includes("verification code") || subjLower.includes("password reset")) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Normalizes common email company domains
- * e.g. "notifications@greenhouse.io" or "recruiting@stripe.com" -> "Stripe"
  */
 function extractCompanyFromEmail(fromEmail: string, subject: string): string {
   // Check subject line patterns like "Application for Software Engineer at Figma" or "Linear: Interview Invitation"
   const atMatch = subject.match(/(?:at|with|@)\s+([A-Z][A-Za-z0-9\s&.-]{1,30})/i);
   if (atMatch && atMatch[1]) {
-    return atMatch[1].trim();
+    const candidate = atMatch[1].trim();
+    if (!candidate.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d+)/i)) {
+      return candidate;
+    }
   }
 
   const prefixMatch = subject.match(/^([A-Z][A-Za-z0-9\s&.-]{1,25})\s*[:\-|–]/);
   if (prefixMatch && prefixMatch[1]) {
-    return prefixMatch[1].trim();
+    const candidate = prefixMatch[1].trim();
+    if (!candidate.match(/^(Invitation|Reminder|Update|Alert|Notice|Fwd|Re|Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i)) {
+      return candidate;
+    }
   }
 
   const domain = fromEmail.split("@")[1] || "";
   const domainBase = domain.split(".")[0];
 
-  const commonATS = ["greenhouse", "lever", "workday", "ashby", "smartrecruiters", "breezy", "jobvite", "workable"];
+  const commonATS = ["greenhouse", "lever", "workday", "ashby", "smartrecruiters", "breezy", "jobvite", "workable", "naukri"];
   if (commonATS.includes(domainBase.toLowerCase())) {
-    // Try extract from subject
-    const subjWords = subject.split(/\s+/);
-    return subjWords[0] || "Company";
+    return "Company";
   }
 
-  if (domainBase) {
+  if (domainBase && domainBase.length > 2) {
     return domainBase.charAt(0).toUpperCase() + domainBase.slice(1);
   }
 
@@ -56,6 +104,26 @@ function extractCompanyFromEmail(fromEmail: string, subject: string): string {
  * Heuristic fallback parser when AI API key is unavailable
  */
 export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
+  if (isIgnoredEmail(email.fromEmail, email.subject)) {
+    return {
+      messageId: email.id,
+      threadId: email.threadId,
+      isJobRelated: false,
+      companyName: "",
+      roleTitle: null,
+      detectedStatus: null,
+      confidence: 0,
+      summary: "",
+      interviewDateTime: null,
+      recruiterName: null,
+      recruiterEmail: null,
+      actionRequired: false,
+      suggestedAction: null,
+      originalSubject: email.subject,
+      originalDate: email.date,
+    };
+  }
+
   const text = `${email.subject} ${email.snippet} ${email.body}`.toLowerCase();
   const company = extractCompanyFromEmail(email.fromEmail, email.subject);
 
@@ -73,7 +141,7 @@ export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
     text.includes("formal offer")
   ) {
     detectedStatus = ApplicationStatus.OFFER;
-    summary = `Formal offer or offer letter received from ${company}.`;
+    summary = `Formal offer received from ${company}.`;
     actionRequired = true;
     suggestedAction = "Review offer details & compensation.";
     confidence = 0.9;
@@ -93,14 +161,13 @@ export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
   }
   // 3. Interview / Next steps
   else if (
-    text.includes("interview") ||
-    text.includes("schedule a call") ||
-    text.includes("invitation to interview") ||
-    text.includes("screening call") ||
-    text.includes("chat with our team") ||
-    text.includes("availability for a call") ||
-    text.includes("calendly.com") ||
-    text.includes("google meet")
+    (text.includes("interview") ||
+      text.includes("schedule a call") ||
+      text.includes("invitation to interview") ||
+      text.includes("screening call") ||
+      text.includes("chat with our team") ||
+      text.includes("availability for a call")) &&
+    !text.includes("onboarding call")
   ) {
     detectedStatus = ApplicationStatus.INTERVIEW;
     summary = `${company} reached out regarding an interview or screening round.`;
@@ -120,13 +187,13 @@ export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
     confidence = 0.8;
   }
 
-  const isJobRelated = detectedStatus !== null || text.includes("application") || text.includes("candidate");
+  const isJobRelated = detectedStatus !== null && company !== "Company" && !company.match(/^(Tue|Mon|Wed|Thu|Fri|Sat|Sun)/i);
 
   return {
     messageId: email.id,
     threadId: email.threadId,
     isJobRelated,
-    companyName: company,
+    companyName: isJobRelated ? company : "",
     roleTitle: null,
     detectedStatus,
     confidence,
@@ -145,15 +212,37 @@ export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
  * AI-powered email parser using Gemini 2.0 Flash with structured JSON output
  */
 export async function parseJobEmailWithAI(email: RawJobEmail): Promise<ParsedJobUpdate> {
+  if (isIgnoredEmail(email.fromEmail, email.subject)) {
+    return {
+      messageId: email.id,
+      threadId: email.threadId,
+      isJobRelated: false,
+      companyName: "",
+      roleTitle: null,
+      detectedStatus: null,
+      confidence: 0,
+      summary: "",
+      interviewDateTime: null,
+      recruiterName: null,
+      recruiterEmail: null,
+      actionRequired: false,
+      suggestedAction: null,
+      originalSubject: email.subject,
+      originalDate: email.date,
+    };
+  }
+
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
 
-  // If no Gemini key is provided, use high-precision heuristic fallback
   if (!apiKey) {
     return heuristicParseEmail(email);
   }
 
   try {
-    const prompt = `You are a recruitment and career AI assistant. Analyze this email received by a job seeker and extract structured information about the job application status.
+    const prompt = `You are a recruitment and career AI assistant. Analyze this email received by a job seeker.
+
+Determine if this email is a legitimate individual job application update (e.g. from an employer, recruiter, or ATS like Greenhouse/Lever about a job application, screening, interview, offer, or rejection).
+Ignore social media connection requests (e.g. LinkedIn connection accepted, Twitter/Reddit notifications), general job board marketing/digests (e.g. "Jobs you might like from Naukri/LinkedIn"), internal company onboarding, or newsletter spam.
 
 Email Details:
 - Date: ${email.date.toISOString()}
@@ -165,23 +254,15 @@ Email Details:
 ${email.body.slice(0, 2500)}
 """
 
-Classify status strictly into one of:
-- "APPLIED" (confirmation that application was submitted/received)
-- "SCREENING" (recruiter phone screen or introductory chat)
-- "INTERVIEW" (technical, behavioral, hiring manager, or onsite interview)
-- "OFFER" (job offer extended or compensation discussion)
-- "REJECTED" (rejection, not moving forward, or position cancelled)
-- null (if not job application related or general newsletter/marketing)
-
 Return ONLY valid JSON with this exact structure:
 {
-  "isJobRelated": true,
-  "companyName": "Company Name",
+  "isJobRelated": true | false,
+  "companyName": "Actual Hiring Company Name (NOT 'LinkedIn', 'Reddit', 'Naukri', or dates)",
   "roleTitle": "Role / Position Name or null",
   "detectedStatus": "APPLIED" | "SCREENING" | "INTERVIEW" | "OFFER" | "REJECTED" | null,
   "confidence": 0.95,
   "summary": "1 concise sentence summarizing the email",
-  "interviewDateTime": "ISO string (e.g. 2026-09-05T15:00:00Z) if an interview date/time is mentioned, else null",
+  "interviewDateTime": "ISO string if an interview date/time is mentioned, else null",
   "recruiterName": "Recruiter Name or null",
   "recruiterEmail": "Recruiter Email or null",
   "actionRequired": true | false,
@@ -204,7 +285,6 @@ Return ONLY valid JSON with this exact structure:
     );
 
     if (!res.ok) {
-      console.warn("Gemini API error, falling back to heuristic:", res.statusText);
       return heuristicParseEmail(email);
     }
 
@@ -222,11 +302,16 @@ Return ONLY valid JSON with this exact structure:
       mappedStatus = parsed.detectedStatus as ApplicationStatus;
     }
 
+    const isValidCompany =
+      parsed.companyName &&
+      parsed.companyName !== "Company" &&
+      !parsed.companyName.match(/^(Linkedin|Reddit|Naukri|Google|Youtube|Twitter|Tue|Mon|Wed|Thu|Fri|Sat|Sun)/i);
+
     return {
       messageId: email.id,
       threadId: email.threadId,
-      isJobRelated: Boolean(parsed.isJobRelated),
-      companyName: parsed.companyName || extractCompanyFromEmail(email.fromEmail, email.subject),
+      isJobRelated: Boolean(parsed.isJobRelated && isValidCompany),
+      companyName: isValidCompany ? parsed.companyName : "",
       roleTitle: parsed.roleTitle || null,
       detectedStatus: mappedStatus,
       confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.9,

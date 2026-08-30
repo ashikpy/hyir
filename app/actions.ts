@@ -867,27 +867,36 @@ export async function scheduleCalendarFollowUp(
   }
 }
 
-export interface SyncInboxResultItem {
+export interface SyncCandidateItem {
   id: string
+  actionType: 'UPDATE_EXISTING' | 'CREATE_NEW'
+  matchedApplicationId?: string
   companyName: string
   roleTitle?: string | null
   status: ApplicationStatus
   previousStatus?: ApplicationStatus | null
   summary: string
-  isNew: boolean
-  interviewScheduled: boolean
+  interviewDateTime?: string | null
+  recruiterName?: string | null
+  recruiterEmail?: string | null
   originalSubject: string
   date: string
+  selected: boolean
 }
 
-export interface SyncInboxResponse {
+export interface SyncPreviewResponse {
   success: boolean
   error?: string
   totalScanned: number
   jobRelatedCount: number
+  items: SyncCandidateItem[]
+}
+
+export interface ApplySyncResponse {
+  success: boolean
+  error?: string
   updatedCount: number
   createdCount: number
-  items: SyncInboxResultItem[]
 }
 
 export async function checkGmailConnectionStatus(): Promise<{
@@ -911,23 +920,25 @@ export async function checkGmailConnectionStatus(): Promise<{
   }
 }
 
-export async function syncGmailInboxAction(options?: {
+/**
+ * Scans inbox in READ-ONLY mode. Does NOT write anything to the database.
+ * Returns proposed updates for the user to review and confirm.
+ */
+export async function scanGmailInboxPreviewAction(options?: {
   daysBack?: number
-}): Promise<SyncInboxResponse> {
+}): Promise<SyncPreviewResponse> {
   const user = await requireUser()
   const { daysBack = 14 } = options || {}
 
-  // 1. Fetch recent emails matching recruitment criteria
+  // 1. Fetch recent emails
   const emailRes = await fetchRecentJobEmails(user.id, { daysBack, maxResults: 20 })
 
   if (!emailRes.success) {
     return {
       success: false,
-      error: emailRes.error || 'Failed to access Gmail. Please ensure Google permissions are granted.',
+      error: emailRes.error || 'Failed to access Gmail.',
       totalScanned: 0,
       jobRelatedCount: 0,
-      updatedCount: 0,
-      createdCount: 0,
       items: [],
     }
   }
@@ -938,28 +949,26 @@ export async function syncGmailInboxAction(options?: {
       success: true,
       totalScanned: 0,
       jobRelatedCount: 0,
-      updatedCount: 0,
-      createdCount: 0,
       items: [],
     }
   }
 
-  // 2. Parse emails with Gemini AI / Heuristic fallback in parallel
+  // 2. Parse emails with Gemini AI / heuristic fallback
   const parsePromises = rawEmails.map((e) => parseJobEmailWithAI(e))
   const parsedResults = await Promise.all(parsePromises)
 
-  const jobEmails = parsedResults.filter((p) => p.isJobRelated && p.companyName && p.companyName !== 'Company')
+  const jobEmails = parsedResults.filter(
+    (p) => p.isJobRelated && p.companyName && p.companyName !== 'Company'
+  )
 
-  const processedItems: SyncInboxResultItem[] = []
-  let updatedCount = 0
-  let createdCount = 0
+  const candidates: SyncCandidateItem[] = []
 
-  // 3. Process each job email against the database
-  for (const item of jobEmails) {
+  for (let idx = 0; idx < jobEmails.length; idx++) {
+    const item = jobEmails[idx]
     const cleanCompany = item.companyName.trim()
     if (!cleanCompany) continue
 
-    // Search for existing application by company name
+    // Search for existing application in user's pipeline
     const existing = await prisma.application.findFirst({
       where: {
         userId: user.id,
@@ -971,28 +980,86 @@ export async function syncGmailInboxAction(options?: {
       },
       select: {
         id: true,
-        slug: true,
         companyName: true,
         roleTitle: true,
         status: true,
-        contactName: true,
-        contactEmail: true,
       },
     })
 
-    let interviewScheduled = false
-
     if (existing) {
-      const prevStatus = existing.status
-      const targetStatus = item.detectedStatus || prevStatus
-      const isStatusChanged = item.detectedStatus !== null && item.detectedStatus !== prevStatus
+      candidates.push({
+        id: `candidate-${idx}-${item.messageId}`,
+        actionType: 'UPDATE_EXISTING',
+        matchedApplicationId: existing.id,
+        companyName: existing.companyName,
+        roleTitle: item.roleTitle || existing.roleTitle,
+        status: item.detectedStatus || existing.status,
+        previousStatus: existing.status,
+        summary: item.summary,
+        interviewDateTime: item.interviewDateTime || null,
+        recruiterName: item.recruiterName || null,
+        recruiterEmail: item.recruiterEmail || null,
+        originalSubject: item.originalSubject,
+        date: item.originalDate.toISOString(),
+        selected: true, // Selected by default for existing applications
+      })
+    } else {
+      candidates.push({
+        id: `candidate-${idx}-${item.messageId}`,
+        actionType: 'CREATE_NEW',
+        companyName: cleanCompany,
+        roleTitle: item.roleTitle || 'Applicant / Role',
+        status: item.detectedStatus || ApplicationStatus.APPLIED,
+        previousStatus: null,
+        summary: item.summary,
+        interviewDateTime: item.interviewDateTime || null,
+        recruiterName: item.recruiterName || null,
+        recruiterEmail: item.recruiterEmail || null,
+        originalSubject: item.originalSubject,
+        date: item.originalDate.toISOString(),
+        selected: false, // Unselected by default for new unknown applications
+      })
+    }
+  }
 
-      // Schedule calendar event if interview detected
+  return {
+    success: true,
+    totalScanned: rawEmails.length,
+    jobRelatedCount: jobEmails.length,
+    items: candidates,
+  }
+}
+
+/**
+ * Applies ONLY user-reviewed and approved updates to the database.
+ */
+export async function applyInboxUpdatesAction(
+  itemsToApply: SyncCandidateItem[]
+): Promise<ApplySyncResponse> {
+  const user = await requireUser()
+
+  if (!itemsToApply || itemsToApply.length === 0) {
+    return { success: true, updatedCount: 0, createdCount: 0 }
+  }
+
+  let updatedCount = 0
+  let createdCount = 0
+
+  for (const item of itemsToApply) {
+    const originalDate = item.date ? new Date(item.date) : new Date()
+
+    if (item.actionType === 'UPDATE_EXISTING' && item.matchedApplicationId) {
+      const existing = await prisma.application.findUnique({
+        where: { id: item.matchedApplicationId },
+      })
+
+      if (!existing || existing.userId !== user.id) continue
+
+      const isStatusChanged = item.status && item.status !== existing.status
       let followUpDate: Date | undefined = undefined
+
       if (item.interviewDateTime) {
         followUpDate = new Date(item.interviewDateTime)
-        interviewScheduled = true
-
         try {
           await createGoogleCalendarApiEvent(user.id, {
             title: `Interview: ${existing.roleTitle} @ ${existing.companyName}`,
@@ -1001,7 +1068,7 @@ export async function syncGmailInboxAction(options?: {
             durationMinutes: 45,
           })
         } catch {
-          // Calendar event creation is best-effort
+          // Best effort
         }
       }
 
@@ -1009,7 +1076,7 @@ export async function syncGmailInboxAction(options?: {
         await tx.application.update({
           where: { id: existing.id },
           data: {
-            status: targetStatus,
+            status: item.status || existing.status,
             ...(followUpDate ? { nextFollowUpDate: followUpDate } : {}),
             ...(item.recruiterName && !existing.contactName ? { contactName: item.recruiterName } : {}),
             ...(item.recruiterEmail && !existing.contactEmail ? { contactEmail: item.recruiterEmail } : {}),
@@ -1020,38 +1087,26 @@ export async function syncGmailInboxAction(options?: {
           data: {
             applicationId: existing.id,
             eventType: isStatusChanged ? 'STATUS_CHANGE' : 'CUSTOM',
-            date: item.originalDate || new Date(),
+            date: originalDate,
             description: `${item.summary} · (Email: "${item.originalSubject}")`,
           },
         })
       })
 
       updatedCount++
-      processedItems.push({
-        id: existing.id,
-        companyName: existing.companyName,
-        roleTitle: existing.roleTitle,
-        status: targetStatus,
-        previousStatus: prevStatus,
-        summary: item.summary,
-        isNew: false,
-        interviewScheduled,
-        originalSubject: item.originalSubject,
-        date: item.originalDate.toISOString(),
-      })
-    } else {
-      // Create new application draft from email
+    } else if (item.actionType === 'CREATE_NEW') {
+      const cleanCompany = item.companyName.trim()
+      if (!cleanCompany) continue
+
       const baseSlug = `${cleanCompany.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${(item.roleTitle || 'role').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
       const existingCount = await prisma.application.count({
         where: { slug: { startsWith: baseSlug } },
       })
       const slug = existingCount > 0 ? `${baseSlug}-${existingCount + 1}-${Math.floor(Math.random() * 1000)}` : baseSlug
-      const initialStatus = item.detectedStatus || ApplicationStatus.APPLIED
 
       let followUpDate: Date | null = null
       if (item.interviewDateTime) {
         followUpDate = new Date(item.interviewDateTime)
-        interviewScheduled = true
       }
 
       const newApp = await prisma.application.create({
@@ -1060,12 +1115,12 @@ export async function syncGmailInboxAction(options?: {
           slug,
           companyName: cleanCompany,
           roleTitle: item.roleTitle || 'Applicant / Role',
-          status: initialStatus,
-          dateApplied: item.originalDate,
+          status: item.status || ApplicationStatus.APPLIED,
+          dateApplied: originalDate,
           contactName: item.recruiterName || null,
           contactEmail: item.recruiterEmail || null,
           nextFollowUpDate: followUpDate,
-          notes: `Auto-imported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
+          notes: `Imported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
         },
       })
 
@@ -1073,24 +1128,12 @@ export async function syncGmailInboxAction(options?: {
         data: {
           applicationId: newApp.id,
           eventType: 'STATUS_CHANGE',
-          date: item.originalDate || new Date(),
-          description: `Discovered from email: "${item.originalSubject}" · ${item.summary}`,
+          date: originalDate,
+          description: `Imported from email: "${item.originalSubject}" · ${item.summary}`,
         },
       })
 
       createdCount++
-      processedItems.push({
-        id: newApp.id,
-        companyName: cleanCompany,
-        roleTitle: item.roleTitle || 'Applicant / Role',
-        status: initialStatus,
-        previousStatus: null,
-        summary: item.summary,
-        isNew: true,
-        interviewScheduled,
-        originalSubject: item.originalSubject,
-        date: item.originalDate.toISOString(),
-      })
     }
   }
 
@@ -1107,10 +1150,8 @@ export async function syncGmailInboxAction(options?: {
 
   return {
     success: true,
-    totalScanned: rawEmails.length,
-    jobRelatedCount: jobEmails.length,
     updatedCount,
     createdCount,
-    items: processedItems,
   }
 }
+

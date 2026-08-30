@@ -3,15 +3,19 @@
 import { useState, useEffect, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Mail, Sparkles, Loader2, CheckCircle2, AlertCircle, Calendar, X, Inbox } from 'lucide-react'
-import { syncGmailInboxAction, checkGmailConnectionStatus, SyncInboxResponse } from '@/app/actions'
+import { Mail, Sparkles, Loader2, CheckCircle2, AlertCircle, Calendar, X, Inbox, CheckSquare, Square, ArrowRight } from 'lucide-react'
+import {
+  scanGmailInboxPreviewAction,
+  applyInboxUpdatesAction,
+  checkGmailConnectionStatus,
+  SyncCandidateItem,
+} from '@/app/actions'
 import { linkSocial, signIn } from '@/lib/auth-client'
 import { ApplicationStatus } from '@prisma/client'
 
 interface InboxSyncModalProps {
   isOpen: boolean
   onClose: () => void
-  initialResult?: SyncInboxResponse | null
 }
 
 const statusColors: Record<ApplicationStatus, { bg: string; text: string; border: string }> = {
@@ -31,12 +35,16 @@ const statusColors: Record<ApplicationStatus, { bg: string; text: string; border
 export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [isScanning, startScanTransition] = useTransition()
+  const [isApplying, startApplyTransition] = useTransition()
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null)
-  const [result, setResult] = useState<SyncInboxResponse | null>(null)
+  const [candidates, setCandidates] = useState<SyncCandidateItem[]>([])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [totalScanned, setTotalScanned] = useState(0)
+  const [appliedStats, setAppliedStats] = useState<{ updated: number; created: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [hasStarted, setHasStarted] = useState(false)
+  const [hasScanned, setHasScanned] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -71,8 +79,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
           callbackURL: window.location.href,
         })
       }
-    } catch (err: any) {
-      // Fallback
+    } catch {
       await signIn.social({
         provider: 'google',
         callbackURL: window.location.href,
@@ -82,24 +89,72 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
     }
   }
 
-  function handleRunSync() {
+  function handleStartScan() {
     setError(null)
-    setHasStarted(true)
-    startTransition(async () => {
+    setHasScanned(true)
+    setAppliedStats(null)
+    startScanTransition(async () => {
       try {
-        const res = await syncGmailInboxAction({ daysBack: 14 })
+        const res = await scanGmailInboxPreviewAction({ daysBack: 14 })
         if (!res.success) {
           setError(res.error || 'Failed to scan inbox.')
           if (res.error?.includes('No Google account connected') || res.error?.includes('permission')) {
             setIsGoogleConnected(false)
           }
         } else {
-          setResult(res)
+          setCandidates(res.items)
+          setTotalScanned(res.totalScanned)
+          // Default selection: select only matching existing applications
+          const initialSelected = new Set<string>()
+          for (const item of res.items) {
+            if (item.selected) {
+              initialSelected.add(item.id)
+            }
+          }
+          setSelectedIds(initialSelected)
           setIsGoogleConnected(true)
-          router.refresh()
         }
       } catch (err: any) {
-        setError(err?.message || 'Something went wrong during inbox sync.')
+        setError(err?.message || 'Something went wrong during inbox scan.')
+      }
+    })
+  }
+
+  function toggleItemSelection(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function handleSelectAll() {
+    if (selectedIds.size === candidates.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(candidates.map((c) => c.id)))
+    }
+  }
+
+  function handleApplySelected() {
+    const itemsToApply = candidates.filter((c) => selectedIds.has(c.id))
+    if (itemsToApply.length === 0) return
+
+    startApplyTransition(async () => {
+      try {
+        const res = await applyInboxUpdatesAction(itemsToApply)
+        if (res.success) {
+          setAppliedStats({ updated: res.updatedCount, created: res.createdCount })
+          router.refresh()
+        } else {
+          setError(res.error || 'Failed to apply updates.')
+        }
+      } catch (err: any) {
+        setError(err?.message || 'Error applying updates.')
       }
     })
   }
@@ -148,7 +203,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#09090b]">
           {/* Not Connected State -> 1-Click Connect Google Button */}
-          {isNotConnected && !isPending && (
+          {isNotConnected && !isScanning && (
             <div className="text-center py-6 space-y-4">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shadow-inner">
                 <svg className="w-6 h-6" viewBox="0 0 24 24">
@@ -216,7 +271,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
           )}
 
           {/* Ready State */}
-          {!isNotConnected && !hasStarted && !result && !error && (
+          {!isNotConnected && !hasScanned && !isScanning && !appliedStats && (
             <div className="text-center py-8 space-y-4">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-center text-zinc-300 shadow-inner">
                 <Inbox className="w-7 h-7 text-zinc-400" />
@@ -226,14 +281,14 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                   Ready to scan your recent job emails
                 </h4>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Hyir will inspect emails from the last 14 days for interview invitations, stage updates, and recruiter replies.
+                  Hyir will inspect emails from the last 14 days and let you <strong>review and approve</strong> any updates before adding them to your pipeline.
                 </p>
               </div>
 
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={handleRunSync}
+                  onClick={handleStartScan}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-md transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
@@ -244,20 +299,20 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
           )}
 
           {/* Pending Progress */}
-          {isPending && (
+          {(isScanning || isApplying) && (
             <div className="py-12 text-center space-y-3">
               <Loader2 className="w-8 h-8 mx-auto text-amber-400 animate-spin" />
               <p className="text-xs font-medium text-zinc-200">
-                Scanning recent emails & running AI classification...
+                {isScanning ? 'Scanning recent emails & running AI classification...' : 'Applying selected updates to your pipeline...'}
               </p>
               <p className="text-[11px] text-zinc-500">
-                Matching companies and updating your pipeline
+                {isScanning ? 'Finding matching applications...' : 'Updating stage and logging activity timeline...'}
               </p>
             </div>
           )}
 
           {/* Error State */}
-          {error && !isPending && !isNotConnected && (
+          {error && !isScanning && !isApplying && !isNotConnected && (
             <div className="p-4 rounded-xl bg-red-950/60 border border-red-800/60 space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-red-300">
                 <AlertCircle className="w-4 h-4" />
@@ -267,7 +322,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
               <div className="pt-2 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleRunSync}
+                  onClick={handleStartScan}
                   className="text-xs px-3 py-1.5 rounded-lg bg-zinc-900 text-zinc-200 hover:bg-zinc-800 border border-zinc-700 transition-colors cursor-pointer"
                 >
                   Try Again
@@ -283,68 +338,113 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             </div>
           )}
 
-          {/* Success Results */}
-          {result && !isPending && (
+          {/* Applied Success State */}
+          {appliedStats && !isApplying && (
+            <div className="py-8 text-center space-y-3 rounded-xl bg-emerald-950/20 border border-emerald-800/40 p-6">
+              <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400" />
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-zinc-100">
+                  Updates Successfully Applied!
+                </h4>
+                <p className="text-xs text-zinc-400">
+                  Updated <strong>{appliedStats.updated}</strong> application(s) and created <strong>{appliedStats.created}</strong> new draft(s).
+                </p>
+              </div>
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-md transition-all cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Candidate Review List (Pre-Apply) */}
+          {hasScanned && !isScanning && !appliedStats && !error && (
             <div className="space-y-4">
-              {/* Summary stat cards */}
-              <div className="grid grid-cols-3 gap-2.5">
-                <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-center">
-                  <span className="block text-lg font-semibold text-zinc-100 font-mono">
-                    {result.totalScanned}
-                  </span>
-                  <span className="text-[11px] text-zinc-400 font-medium">Emails Scanned</span>
+              {/* Header & Controls */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+                    Discovered Updates ({candidates.length})
+                  </h4>
+                  <p className="text-[11px] text-zinc-400">
+                    Scanned {totalScanned} emails. Select items you want to apply.
+                  </p>
                 </div>
-                <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-center">
-                  <span className="block text-lg font-semibold text-emerald-400 font-mono">
-                    {result.updatedCount}
-                  </span>
-                  <span className="text-[11px] text-zinc-400 font-medium">Stage Updates</span>
-                </div>
-                <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-center">
-                  <span className="block text-lg font-semibold text-cyan-400 font-mono">
-                    {result.createdCount}
-                  </span>
-                  <span className="text-[11px] text-zinc-400 font-medium">New Discovered</span>
-                </div>
+                {candidates.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    {selectedIds.size === candidates.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                )}
               </div>
 
-              {/* Items List */}
-              {result.items.length === 0 ? (
+              {candidates.length === 0 ? (
                 <div className="py-8 text-center space-y-2 rounded-xl bg-zinc-900/40 border border-dashed border-zinc-800">
                   <CheckCircle2 className="w-6 h-6 mx-auto text-zinc-500" />
                   <p className="text-xs text-zinc-400 font-medium">
-                    No new job updates found in recent emails.
+                    No relevant job updates found in recent emails.
                   </p>
                   <p className="text-[11px] text-zinc-500">Your job pipeline is up to date!</p>
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-                    Discovered Updates ({result.items.length})
-                  </h4>
+                <div className="space-y-2 max-h-[48vh] overflow-y-auto pr-1">
+                  {candidates.map((item, idx) => {
+                    const isSelected = selectedIds.has(item.id)
+                    const isUpdate = item.actionType === 'UPDATE_EXISTING'
 
-                  <div className="space-y-2">
-                    {result.items.map((item, idx) => (
+                    return (
                       <div
-                        key={`${item.id}-${idx}-${item.date || ''}`}
-                        className="p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-2"
+                        key={`${item.id}-${idx}`}
+                        onClick={() => toggleItemSelection(item.id)}
+                        className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-2 ${
+                          isSelected
+                            ? 'bg-zinc-900/90 border-zinc-700 shadow-xs'
+                            : 'bg-zinc-950/40 border-zinc-850 opacity-60 hover:opacity-100 hover:border-zinc-800'
+                        }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-semibold text-xs text-zinc-100 truncate">
-                              {item.companyName}
-                            </span>
-                            {item.roleTitle && (
-                              <span className="text-[11px] text-zinc-400 truncate">
-                                · {item.roleTitle}
-                              </span>
-                            )}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <button
+                              type="button"
+                              className="text-zinc-400 hover:text-white mt-0.5 shrink-0"
+                            >
+                              {isSelected ? (
+                                <CheckSquare className="w-4 h-4 text-amber-400" />
+                              ) : (
+                                <Square className="w-4 h-4 text-zinc-600" />
+                              )}
+                            </button>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-xs text-zinc-100 truncate">
+                                  {item.companyName}
+                                </span>
+                                {item.roleTitle && (
+                                  <span className="text-[11px] text-zinc-400 truncate">
+                                    · {item.roleTitle}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
-                            {item.isNew && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-cyan-950 text-cyan-300 border border-cyan-800/50">
-                                New App
+                            {isUpdate ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/50">
+                                Matched App
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                New Draft
                               </span>
                             )}
 
@@ -362,25 +462,25 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                           </div>
                         </div>
 
-                        <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+                        <p className="text-xs text-zinc-300 leading-relaxed font-normal pl-6.5">
                           {item.summary}
                         </p>
 
-                        <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-500 border-t border-zinc-800/80">
+                        <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-500 border-t border-zinc-850 pl-6.5">
                           <span className="truncate max-w-[280px]">
                             Email: &quot;{item.originalSubject}&quot;
                           </span>
 
-                          {item.interviewScheduled && (
+                          {item.interviewDateTime && (
                             <span className="inline-flex items-center gap-1 text-amber-400 font-medium text-[10px]">
                               <Calendar className="w-3 h-3" />
-                              Calendar Synced
+                              Calendar Sync
                             </span>
                           )}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -393,13 +493,15 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             Powered by Gemini AI & Gmail Read-Only Sync
           </div>
           <div className="flex items-center gap-2">
-            {result && !isPending && (
+            {hasScanned && candidates.length > 0 && !appliedStats && !isScanning && !isApplying && (
               <button
                 type="button"
-                onClick={handleRunSync}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                disabled={selectedIds.size === 0}
+                onClick={handleApplySelected}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Scan Again
+                <span>Apply Selected ({selectedIds.size})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
             <button
