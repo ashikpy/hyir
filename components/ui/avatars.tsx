@@ -40,6 +40,16 @@ export function CompanyLogo({
     }
   }
 
+  // Fallback to name domain inference (e.g. "Havi.co" -> "havi.co", "Project44" -> "project44.com")
+  if (!domain && name) {
+    const trimmed = name.trim().toLowerCase()
+    if (trimmed.includes('.')) {
+      domain = trimmed
+    } else {
+      domain = `${trimmed.replace(/[^a-z0-9]/g, '')}.com`
+    }
+  }
+
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=27272a&color=fafafa&format=svg`
 
   if (!domain || hasError) {

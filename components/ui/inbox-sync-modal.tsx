@@ -28,6 +28,7 @@ import {
 } from '@/app/actions'
 import { linkSocial, signIn } from '@/lib/auth-client'
 import { ApplicationStatus } from '@prisma/client'
+import { CompanyLogo } from '@/components/ui/avatars'
 
 interface InboxSyncModalProps {
   isOpen: boolean
@@ -494,6 +495,9 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                                 )}
                               </button>
 
+                              {/* Company Logo */}
+                              <CompanyLogo name={item.companyName} className="w-6 h-6 shrink-0" />
+
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-xs text-zinc-100 truncate">
@@ -593,21 +597,24 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                         {isExpanded && (
                           <div className="border-t border-zinc-800 bg-[#060608] p-4 space-y-3 animate-in fade-in duration-150">
                             <div className="flex items-center justify-between gap-2 text-xs">
-                              <div className="space-y-0.5 min-w-0">
-                                <div className="text-zinc-300 font-medium truncate">
-                                  <span className="text-zinc-500">From: </span>
-                                  <span>{senderDisplay}</span>
-                                  {(item.recruiterEmail || item.fromEmail) && (
-                                    <span className="text-zinc-500 ml-1">
-                                      &lt;{item.recruiterEmail || item.fromEmail}&gt;
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <CompanyLogo name={item.companyName} className="w-7 h-7 shrink-0" />
+                                <div className="space-y-0.5 min-w-0">
+                                  <div className="text-zinc-300 font-medium truncate">
+                                    <span className="text-zinc-500">From: </span>
+                                    <span>{senderDisplay}</span>
+                                    {(item.recruiterEmail || item.fromEmail) && (
+                                      <span className="text-zinc-500 ml-1">
+                                        &lt;{item.recruiterEmail || item.fromEmail}&gt;
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-zinc-500">
+                                    <span>Subject: </span>
+                                    <span className="text-zinc-400 font-medium">
+                                      {item.originalSubject}
                                     </span>
-                                  )}
-                                </div>
-                                <div className="text-[11px] text-zinc-500">
-                                  <span>Subject: </span>
-                                  <span className="text-zinc-400 font-medium">
-                                    {item.originalSubject}
-                                  </span>
+                                  </div>
                                 </div>
                               </div>
 
