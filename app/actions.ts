@@ -694,6 +694,7 @@ export async function getTriageCount(): Promise<number> {
       status: true,
       applicationUrl: true,
       salary: true,
+      source: true,
       contactName: true,
       dateApplied: true,
       nextFollowUpDate: true,
@@ -718,6 +719,7 @@ export async function getTriageCount(): Promise<number> {
       isOverdue ||
       (!app.contactName && !isDraft) ||
       (!app.salary || app.salary.trim() === '') ||
+      !app.source ||
       (app.status === ApplicationStatus.INTERVIEW && !app.nextFollowUpDate)
 
     if (hasIssue) {

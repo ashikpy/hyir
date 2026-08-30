@@ -49,7 +49,7 @@ export interface TriageApp {
   timelineEvents?: Array<{ date: Date | string; eventType: string }>
 }
 
-export type TriageFilter = 'ALL' | 'DRAFTS' | 'NO_URL' | 'NO_DATE' | 'NO_CONTACT' | 'NO_SALARY' | 'STALE'
+export type TriageFilter = 'ALL' | 'DRAFTS' | 'NO_URL' | 'NO_DATE' | 'NO_CONTACT' | 'NO_SALARY' | 'NO_SOURCE' | 'STALE'
 
 const STATUS_OPTIONS = [
   {
@@ -189,6 +189,9 @@ function getAppIssues(app: TriageApp): IssueTag[] {
   if (!app.salary || app.salary.trim() === '') {
     tags.push({ label: 'No Salary', tier: 'warning', key: 'no_salary' })
   }
+  if (!app.source && !extractAppSource(app)) {
+    tags.push({ label: 'Missing Source', tier: 'warning', key: 'no_source' })
+  }
   if (app.status === 'INTERVIEW' && !app.nextFollowUpDate) {
     tags.push({ label: 'No Interview Date', tier: 'warning', key: 'no_interview_date' })
   }
@@ -289,6 +292,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     let noDate = 0
     let noContact = 0
     let noSalary = 0
+    let noSource = 0
     let stale = 0
 
     triageItems.forEach(({ issues }) => {
@@ -297,10 +301,11 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       if (issues.some((i) => i.key === 'no_date')) noDate++
       if (issues.some((i) => i.key === 'no_contact')) noContact++
       if (issues.some((i) => i.key === 'no_salary')) noSalary++
+      if (issues.some((i) => i.key === 'no_source')) noSource++
       if (issues.some((i) => i.key === 'stale')) stale++
     })
 
-    return { drafts, noUrl, noDate, noContact, noSalary, stale }
+    return { drafts, noUrl, noDate, noContact, noSalary, noSource, stale }
   }, [triageItems])
 
   // Filtered by active tab & search
@@ -318,6 +323,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       if (filter === 'NO_DATE') return issues.some((i) => i.key === 'no_date')
       if (filter === 'NO_CONTACT') return issues.some((i) => i.key === 'no_contact')
       if (filter === 'NO_SALARY') return issues.some((i) => i.key === 'no_salary')
+      if (filter === 'NO_SOURCE') return issues.some((i) => i.key === 'no_source')
       if (filter === 'STALE') return issues.some((i) => i.key === 'stale')
 
       return true
@@ -547,6 +553,18 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
             }`}
           >
             <span>No Salary ({counts.noSalary})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilter('NO_SOURCE')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
+              filter === 'NO_SOURCE'
+                ? 'bg-zinc-800 text-zinc-200 border border-zinc-700 font-semibold'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+            }`}
+          >
+            <span>Missing Source ({counts.noSource})</span>
           </button>
         </div>
 
