@@ -197,6 +197,13 @@ export async function fetchRecentJobEmails(
     if (!listRes.ok) {
       const errData = await listRes.json().catch(() => ({}));
       const msg = errData?.error?.message || "Failed to search Gmail messages";
+      if (errData?.error?.message?.includes("disabled") || errData?.error?.message?.includes("not been used")) {
+        return {
+          success: false,
+          emails: [],
+          error: "Gmail API is not enabled in your Google Cloud project. Please enable the Gmail API in Google Cloud Console.",
+        };
+      }
       if (listRes.status === 403 || listRes.status === 401) {
         return {
           success: false,
