@@ -1,81 +1,93 @@
-# Future Roadmap & Feature Specs
+# Hyir AI Copilot & Chatbot Roadmap
 
-## Automated Email Ingestion & Job Status Classification Pipeline
-
-### Overview
-Automate application tracking by integrating user email inboxes (Gmail / Outlook) with an AI-powered extraction and status classification pipeline that detects job applications, interview invitations, assessments, offers, and rejections.
+A native, state-aware AI assistant and command copilot embedded directly into Hyir to automate pipeline querying, data entry, follow-ups, and interview preparation.
 
 ---
 
-### 1. Authentication & OAuth Scopes
-* **Auth Layer**: NextAuth / Auth.js with Google & Microsoft providers.
-* **Scopes**:
-  * `openid email profile` (user identification)
-  * `https://www.googleapis.com/auth/gmail.readonly` (read-only access to emails)
-* **Token Management**:
-  * Securely store `access_token` and `refresh_token` in Prisma `Account` / `User` tables for background syncing without re-prompting logins.
+## 1. Overview & Vision
+
+The Hyir Copilot transforms static job tracking into an intelligent personal executive assistant. Instead of navigating multiple pages and typing data manually into forms, the user can query and control their entire application pipeline via natural language, shortcut commands (`⌘J`), and voice/text input.
 
 ---
 
-### 2. Email Querying & Ingestion Strategy
-Rather than scanning every email, query specific recruiter & ATS signals:
-* **Search Filter Query**:
-  ```text
-  from:(greenhouse.io OR lever.co OR ashbyhq.com OR workday.com OR smartrecruiters.com OR "careers@" OR "recruiting@") 
-  OR subject:("application" OR "interview" OR "offer" OR "status of your application" OR "invitation to interview")
-  ```
-* **Incremental Sync**:
-  * Track `lastSyncedAt` or Gmail `historyId` per user so only new messages since the last sync are fetched.
+## 2. Core Capabilities & Use Cases
+
+### A. Intelligent Pipeline Querying (Natural Language Analytics)
+* *"How many applications have I submitted this week?"*
+* *"Show me all applications from Instahyre where salary is above ₹20 LPA."*
+* *"Which active interview pipelines haven't had an update in over 7 days?"*
+* *"What's my interview conversion rate this month compared to last month?"*
+
+### B. Copilot Actions & Tool Calling (Instant Execution)
+* **Status Updates**: *"Mark HSV Digital as Ghosted."* / *"Move Techpix to Interview round."*
+* **Application Creation**: *"Track a new application for Stripe - Senior Designer via LinkedIn."*
+* **Follow-up & Calendar Scheduling**: *"Schedule a follow-up for RentOk in 5 days on Google Calendar."*
+* **Data Enrichment**: *"Set the recruiter for Cypherock to Alex (alex@cypherock.com) and salary to $140k."*
+
+### C. Application & Interview Prep (Content Generation)
+* **Follow-up Email Drafter**: *"Draft a polite follow-up email to Sarah at HSV Digital inquiring about next steps."*
+* **Rejection / Counter Response**: *"Write a thank-you note expressing continued interest after a phone screen."*
+* **Role-Specific Interview Questions**: *"Based on my notes and role title for Linear, what are 5 key technical & behavioral questions I should prepare for?"*
+* **Company Insights**: *"Summarize recent news and business model for Outdoo AI."*
 
 ---
 
-### 3. Extraction & Classification Engine (AI Pipeline)
+## 3. Architecture & Technical Design
 
-#### Stage A: Entity Extraction
-* **Company Name**: Derived from sender domain (e.g. `jobs.lever.co/stripe` $\rightarrow$ Stripe) or body header.
-* **Role Title**: Extracted from subject line or initial greeting (e.g. *"Application for Senior Product Designer"*).
-* **Date & Point of Contact**: Recruiter name/email and scheduled dates.
+### Frontend (UI/UX)
+* **Floating Command Drawer / Slide-out**:
+  - Global hotkey shortcut: `⌘J` (or `Ctrl+J`) and bottom-right floating trigger button.
+  - Linear-inspired dark-mode minimal interface with streaming message bubble UI.
+  - Quick action suggestion chips (*"Overdue Follow-ups"*, *"Ghost Inactive"*, *"Prep for Interview"*).
+* **Streaming Responses**:
+  - Vercel AI SDK (`ai/react` `useChat`) with token streaming for <250ms time-to-first-token.
 
-#### Stage B: Structured Classification (LLM Prompt & Schema)
-Pass sanitized email body into a fast structured LLM (e.g. Gemini Flash) returning:
+### Backend & API
+* **Route Handler**: `/api/chat` (Edge / Node runtime) utilizing Google Gemini 2.5 Flash / OpenRouter.
+* **Database & Context Injection**:
+  - Automatically loads the authenticated user's current pipeline snapshot into the LLM system context.
+  - Strict tenant isolation (scoped to `userId`).
 
-```json
-{
-  "company": "Figma",
-  "role": "Product Designer",
-  "eventType": "INTERVIEW_INVITATION", 
-  "status": "INTERVIEW",
-  "summary": "Recruiter reached out with Calendly link for 30m screening call",
-  "detectedDate": "2026-08-28T10:00:00Z",
-  "actionRequired": true,
-  "confidence": 0.96
+### Tool Calling Definitions
+```typescript
+const tools = {
+  getApplications: {
+    description: 'Fetch and filter user applications by status, broker, date, or salary.',
+    parameters: z.object({ ... })
+  },
+  updateApplicationStatus: {
+    description: 'Update application stage (SAVED, APPLIED, INTERVIEW, OFFER, REJECTED, GHOSTED).',
+    parameters: z.object({ ... })
+  },
+  createApplication: {
+    description: 'Track a new job application with company, role, source, and salary.',
+    parameters: z.object({ ... })
+  },
+  scheduleFollowUp: {
+    description: 'Set follow-up date and generate Google Calendar event link.',
+    parameters: z.object({ ... })
+  },
+  draftEmail: {
+    description: 'Draft customized outreach, follow-up, or negotiation emails.',
+    parameters: z.object({ ... })
+  }
 }
 ```
 
-**Supported Status Types**:
-* `APPLIED` (Confirmation of received application)
-* `SCREENING` / `INTERVIEW` (Interview invite / scheduling link)
-* `ASSIGNMENT` (Take-home assessment / coding challenge)
-* `OFFER` (Offer letter / congratulatory notice)
-* `REJECTED` (Notice of moving forward with other candidates)
-
 ---
 
-### 4. Database & UI Synchronization
-1. **Application Matcher**:
-   * Search Prisma database by `companyName` or application URL.
-   * If existing record found: Update `status`, add a new `TimelineEvent`, and update `nextFollowUpDate`.
-   * If new company: Optionally auto-create a new `Application` under `APPLIED`.
-2. **Review & Sync Interface**:
-   * An optional review inbox (e.g. *"3 new job updates detected — [Review & Sync]"*) allowing manual approval before mutating data.
-3. **Ambient Ray Lighting Integration**:
-   * **🚨 Urgent State**: Incoming deadline / follow-up action triggers the warm amber + coral red rays (`#ffecb0` + `#ff8a8a`).
-   * **🎉 Good News State**: Incoming offer / accepted position triggers the electric sky blue rays (`#38bdf8` + `#818cf8`).
-   * **✨ Calm State**: Default clean monochromatic silver rays.
+## 4. SaaS Feasibility & Monetization Model
 
----
+### Cost Efficiency
+* **Model Choice**: Google Gemini 2.5 Flash / Claude 3.5 Haiku.
+* **Unit Economics**: ~$0.0001 - $0.0003 per query.
+* **Monthly Active User Cost**: 100 queries/month costs **~$0.02 - $0.05 / user**.
+* **Gross Margins**: **>95%**.
 
-### 5. Privacy & Security Safeguards
-* Enforce read-only scopes strictly (`gmail.readonly`).
-* Store only extracted metadata (company, role, snippet, date), never full inbox dumps.
-* Allow users to disconnect their email and purge cached tokens at any time.
+### Tier Packaging
+* **Free Tier**: Manual tracking + 15 Copilot queries / month.
+* **Pro Tier ($12/month)**:
+  - Unlimited AI Copilot commands and queries
+  - Automatic Gmail & job board sync
+  - AI email generator & interviewer prep tool
+  - Priority Google Calendar integration
