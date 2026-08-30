@@ -23,7 +23,8 @@ export const auth = betterAuth({
   ].filter(Boolean) as string[],
   account: {
     accountLinking: {
-      enabled: false,
+      enabled: true,
+      trustedProviders: ["google", "linkedin"],
     },
   },
   emailAndPassword: {

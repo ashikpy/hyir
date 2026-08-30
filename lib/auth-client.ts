@@ -7,4 +7,4 @@ export const authClient = createAuthClient({
       : process.env.NEXT_PUBLIC_APP_URL || undefined,
 });
 
-export const { signIn, signUp, signOut, useSession, getSession } = authClient;
+export const { signIn, signUp, signOut, useSession, getSession, linkSocial } = authClient;

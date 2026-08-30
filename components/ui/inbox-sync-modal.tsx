@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mail, Sparkles, Loader2, CheckCircle2, AlertCircle, Calendar, ArrowRight, X, Inbox } from 'lucide-react'
-import { syncGmailInboxAction, SyncInboxResponse, SyncInboxResultItem } from '@/app/actions'
+import { Mail, Sparkles, Loader2, CheckCircle2, AlertCircle, Calendar, X, Inbox } from 'lucide-react'
+import { syncGmailInboxAction, checkGmailConnectionStatus, SyncInboxResponse } from '@/app/actions'
+import { linkSocial, signIn } from '@/lib/auth-client'
 import { ApplicationStatus } from '@prisma/client'
-import Link from 'next/link'
 
 interface InboxSyncModalProps {
   isOpen: boolean
@@ -30,11 +30,51 @@ const statusColors: Record<ApplicationStatus, { bg: string; text: string; border
 export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
+  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null)
   const [result, setResult] = useState<SyncInboxResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hasStarted, setHasStarted] = useState(false)
 
+  useEffect(() => {
+    if (isOpen) {
+      checkGmailConnectionStatus()
+        .then((status) => {
+          setIsGoogleConnected(status.isConnected)
+        })
+        .catch(() => {
+          setIsGoogleConnected(false)
+        })
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
+
+  async function handleConnectGoogle() {
+    try {
+      setIsConnectingGoogle(true)
+      setError(null)
+      if (typeof linkSocial === 'function') {
+        await linkSocial({
+          provider: 'google',
+          callbackURL: window.location.href,
+        })
+      } else {
+        await signIn.social({
+          provider: 'google',
+          callbackURL: window.location.href,
+        })
+      }
+    } catch (err: any) {
+      // Fallback
+      await signIn.social({
+        provider: 'google',
+        callbackURL: window.location.href,
+      })
+    } finally {
+      setIsConnectingGoogle(false)
+    }
+  }
 
   function handleRunSync() {
     setError(null)
@@ -44,8 +84,12 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
         const res = await syncGmailInboxAction({ daysBack: 14 })
         if (!res.success) {
           setError(res.error || 'Failed to scan inbox.')
+          if (res.error?.includes('No Google account connected') || res.error?.includes('permission')) {
+            setIsGoogleConnected(false)
+          }
         } else {
           setResult(res)
+          setIsGoogleConnected(true)
           router.refresh()
         }
       } catch (err: any) {
@@ -53,6 +97,8 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
       }
     })
   }
+
+  const isNotConnected = isGoogleConnected === false || (error && error.includes('Google account'))
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
@@ -84,7 +130,76 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {!hasStarted && !result && !error && (
+          {/* Not Connected State -> 1-Click Connect Google Button */}
+          {isNotConnected && !isPending && (
+            <div className="text-center py-6 space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shadow-inner">
+                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.1c0 2.8.7 5.4 1.9 7.8l3.7-2.9z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 17c1.8 3.7 5.6 6.5 10.1 6.5z"
+                  />
+                </svg>
+              </div>
+
+              <div className="max-w-sm mx-auto space-y-1.5">
+                <h4 className="text-sm font-medium text-zinc-100">
+                  Connect your Google Account
+                </h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Link your Gmail account to enable automatic inbox scanning for interview invites and stage updates.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  disabled={isConnectingGoogle}
+                  onClick={handleConnectGoogle}
+                  className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isConnectingGoogle ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-zinc-600" />
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#EA4335"
+                        d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
+                      />
+                      <path
+                        fill="#4285F4"
+                        d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.1c0 2.8.7 5.4 1.9 7.8l3.7-2.9z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 17c1.8 3.7 5.6 6.5 10.1 6.5z"
+                      />
+                    </svg>
+                  )}
+                  <span>Connect Google & Gmail</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Ready State */}
+          {!isNotConnected && !hasStarted && !result && !error && (
             <div className="text-center py-8 space-y-4">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-center text-zinc-300 shadow-inner">
                 <Inbox className="w-7 h-7 text-zinc-400" />
@@ -111,6 +226,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             </div>
           )}
 
+          {/* Pending Progress */}
           {isPending && (
             <div className="py-12 text-center space-y-3">
               <Loader2 className="w-8 h-8 mx-auto text-amber-400 animate-spin" />
@@ -123,19 +239,15 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             </div>
           )}
 
-          {error && !isPending && (
+          {/* Error State */}
+          {error && !isPending && !isNotConnected && (
             <div className="p-4 rounded-xl bg-red-950/40 border border-red-800/50 space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-red-300">
                 <AlertCircle className="w-4 h-4" />
                 <span>Inbox Sync Notice</span>
               </div>
               <p className="text-xs text-red-200/90 leading-relaxed">{error}</p>
-              {error.includes('permission') && (
-                <p className="text-[11px] text-zinc-400 pt-1">
-                  Tip: Log out and sign in again with Google to grant Gmail read permissions.
-                </p>
-              )}
-              <div className="pt-2">
+              <div className="pt-2 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleRunSync}
@@ -143,10 +255,18 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                 >
                   Try Again
                 </button>
+                <button
+                  type="button"
+                  onClick={handleConnectGoogle}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors cursor-pointer font-medium"
+                >
+                  Re-connect Google
+                </button>
               </div>
             </div>
           )}
 
+          {/* Success Results */}
           {result && !isPending && (
             <div className="space-y-4">
               {/* Summary stat cards */}
