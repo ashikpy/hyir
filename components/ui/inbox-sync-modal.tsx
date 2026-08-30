@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Link2,
 } from 'lucide-react'
 import {
   scanGmailInboxPreviewAction,
@@ -31,6 +32,13 @@ import { ApplicationStatus } from '@prisma/client'
 interface InboxSyncModalProps {
   isOpen: boolean
   onClose: () => void
+}
+
+interface ExistingAppOption {
+  id: string
+  companyName: string
+  roleTitle: string
+  status: ApplicationStatus
 }
 
 const statusColors: Record<ApplicationStatus, { bg: string; text: string; border: string }> = {
@@ -55,6 +63,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null)
   const [candidates, setCandidates] = useState<SyncCandidateItem[]>([])
+  const [existingApps, setExistingApps] = useState<ExistingAppOption[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null)
   const [totalScanned, setTotalScanned] = useState(0)
@@ -120,6 +129,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
           }
         } else {
           setCandidates(res.items)
+          setExistingApps(res.existingApplications || [])
           setTotalScanned(res.totalScanned)
           // Default selection: select matching existing applications
           const initialSelected = new Set<string>()
@@ -147,6 +157,37 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
       }
       return next
     })
+  }
+
+  function handleLinkAppChange(candidateId: string, targetAppId: string) {
+    setCandidates((prev) =>
+      prev.map((c) => {
+        if (c.id !== candidateId) return c
+
+        if (targetAppId === '__NEW__') {
+          return {
+            ...c,
+            actionType: 'CREATE_NEW',
+            matchedApplicationId: undefined,
+          }
+        }
+
+        const chosenApp = existingApps.find((a) => a.id === targetAppId)
+        if (!chosenApp) return c
+
+        // Auto-select when manually linked
+        setSelectedIds((s) => new Set(s).add(candidateId))
+
+        return {
+          ...c,
+          actionType: 'UPDATE_EXISTING',
+          matchedApplicationId: chosenApp.id,
+          companyName: chosenApp.companyName,
+          roleTitle: chosenApp.roleTitle,
+          previousStatus: chosenApp.status,
+        }
+      })
+    )
   }
 
   function toggleExpandEmail(id: string) {
@@ -302,7 +343,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                   Ready to scan your recent job emails
                 </h4>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Hyir will inspect emails from the last 14 days. You can <strong>read the full emails</strong>, verify company/role detection, and select which updates to apply.
+                  Hyir will inspect emails from the last 14 days. You can <strong>read the full emails</strong>, link items to existing applications, and confirm updates before applying.
                 </p>
               </div>
 
@@ -324,7 +365,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             <div className="py-12 text-center space-y-3">
               <Loader2 className="w-8 h-8 mx-auto text-amber-400 animate-spin" />
               <p className="text-xs font-medium text-zinc-200">
-                {isScanning ? 'Scanning recent emails & running AI classification...' : 'Applying selected updates to your pipeline...'}
+                {isScanning ? 'Scanning recent emails & matching applications...' : 'Applying selected updates to your pipeline...'}
               </p>
               <p className="text-[11px] text-zinc-500">
                 {isScanning ? 'Finding matching applications and decoding messages...' : 'Updating stage and logging activity timeline...'}
@@ -383,7 +424,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             </div>
           )}
 
-          {/* Candidate Review List with Expandable Full Email Reader */}
+          {/* Candidate Review List with Expandable Email & Match Dropdown */}
           {hasScanned && !isScanning && !appliedStats && !error && (
             <div className="space-y-4">
               {/* Header & Controls */}
@@ -393,7 +434,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                     Discovered Updates ({candidates.length})
                   </h4>
                   <p className="text-[11px] text-zinc-400">
-                    Scanned {totalScanned} emails. Click cards to read emails or check to apply.
+                    Scanned {totalScanned} emails. Link to existing jobs or check to apply.
                   </p>
                 </div>
                 {candidates.length > 0 && (
@@ -496,9 +537,31 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                             {item.summary}
                           </p>
 
+                          {/* Link to Application Dropdown */}
+                          <div className="flex items-center gap-2 pl-6.5 pt-0.5">
+                            <Link2 className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                            <label className="text-[11px] text-zinc-400 shrink-0 font-medium">
+                              Link to:
+                            </label>
+                            <select
+                              value={item.matchedApplicationId || '__NEW__'}
+                              onChange={(e) => handleLinkAppChange(item.id, e.target.value)}
+                              className="text-xs bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-zinc-200 focus:outline-none focus:border-zinc-600 cursor-pointer min-w-[200px] truncate"
+                            >
+                              <option value="__NEW__">➕ Create as New Application Draft</option>
+                              <optgroup label="Your Existing Applications">
+                                {existingApps.map((app) => (
+                                  <option key={app.id} value={app.id}>
+                                    🔗 {app.companyName} ({app.roleTitle || 'Role'})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            </select>
+                          </div>
+
                           {/* Email metadata bar with expand toggle */}
                           <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-500 border-t border-zinc-850 pl-6.5">
-                            <span className="truncate max-w-[260px]">
+                            <span className="truncate max-w-[240px]">
                               Email: &quot;{item.originalSubject}&quot;
                             </span>
 

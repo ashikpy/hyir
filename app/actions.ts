@@ -896,6 +896,12 @@ export interface SyncPreviewResponse {
   totalScanned: number
   jobRelatedCount: number
   items: SyncCandidateItem[]
+  existingApplications: Array<{
+    id: string
+    companyName: string
+    roleTitle: string
+    status: ApplicationStatus
+  }>
 }
 
 export interface ApplySyncResponse {
@@ -936,6 +942,26 @@ export async function scanGmailInboxPreviewAction(options?: {
   const user = await requireUser()
   const { daysBack = 14 } = options || {}
 
+  // Fetch all user's existing applications for smart matching & linking
+  const allUserApps = await prisma.application.findMany({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      companyName: true,
+      roleTitle: true,
+      status: true,
+      contactEmail: true,
+    },
+    orderBy: { updatedAt: 'desc' },
+  })
+
+  const clientExistingApps = allUserApps.map((a) => ({
+    id: a.id,
+    companyName: a.companyName,
+    roleTitle: a.roleTitle,
+    status: a.status,
+  }))
+
   // 1. Fetch recent emails
   const emailRes = await fetchRecentJobEmails(user.id, { daysBack, maxResults: 20 })
 
@@ -946,6 +972,7 @@ export async function scanGmailInboxPreviewAction(options?: {
       totalScanned: 0,
       jobRelatedCount: 0,
       items: [],
+      existingApplications: clientExistingApps,
     }
   }
 
@@ -956,6 +983,7 @@ export async function scanGmailInboxPreviewAction(options?: {
       totalScanned: 0,
       jobRelatedCount: 0,
       items: [],
+      existingApplications: clientExistingApps,
     }
   }
 
@@ -974,33 +1002,40 @@ export async function scanGmailInboxPreviewAction(options?: {
     const cleanCompany = item.companyName.trim()
     if (!cleanCompany) continue
 
-    // Search for existing application in user's pipeline
-    const existing = await prisma.application.findFirst({
-      where: {
-        userId: user.id,
-        OR: [
-          { companyName: { equals: cleanCompany, mode: 'insensitive' as const } },
-          { companyName: { contains: cleanCompany, mode: 'insensitive' as const } },
-          ...(item.recruiterEmail ? [{ contactEmail: { equals: item.recruiterEmail, mode: 'insensitive' as const } }] : []),
-        ],
-      },
-      select: {
-        id: true,
-        companyName: true,
-        roleTitle: true,
-        status: true,
-      },
+    const cleanLower = cleanCompany.toLowerCase()
+    const cleanAlpha = cleanLower.replace(/[^a-z0-9]/g, '')
+    const subjLower = item.originalSubject.toLowerCase()
+
+    // Smart Multi-Level Application Matcher:
+    // 1. Exact or case-insensitive match
+    // 2. Recruiter email match
+    // 3. Subject line explicitly mentions company name (e.g. "Your application to Havi.co" -> Havi.co)
+    // 4. Normalized alphanumeric match (e.g. "P-44" -> "project44" / "p44")
+    const matchedApp = allUserApps.find((app) => {
+      const appLower = app.companyName.toLowerCase()
+      const appAlpha = appLower.replace(/[^a-z0-9]/g, '')
+
+      if (appLower === cleanLower) return true
+      if (app.contactEmail && item.recruiterEmail && app.contactEmail.toLowerCase() === item.recruiterEmail.toLowerCase()) return true
+      if (subjLower.includes(appLower) && appLower.length >= 3) return true
+      if (appAlpha.length >= 3 && cleanAlpha.length >= 3) {
+        if (appAlpha === cleanAlpha) return true
+        if (appAlpha.includes(cleanAlpha) || cleanAlpha.includes(appAlpha)) return true
+        if (cleanAlpha.startsWith('p') && appAlpha.startsWith('project') && cleanAlpha.slice(1) === appAlpha.slice(7)) return true
+        if (appAlpha.startsWith('p') && cleanAlpha.startsWith('project') && appAlpha.slice(1) === cleanAlpha.slice(7)) return true
+      }
+      return false
     })
 
-    if (existing) {
+    if (matchedApp) {
       candidates.push({
         id: `candidate-${idx}-${item.messageId}`,
         actionType: 'UPDATE_EXISTING',
-        matchedApplicationId: existing.id,
-        companyName: existing.companyName,
-        roleTitle: item.roleTitle || existing.roleTitle,
-        status: item.detectedStatus || existing.status,
-        previousStatus: existing.status,
+        matchedApplicationId: matchedApp.id,
+        companyName: matchedApp.companyName,
+        roleTitle: matchedApp.roleTitle || item.roleTitle,
+        status: item.detectedStatus || matchedApp.status,
+        previousStatus: matchedApp.status,
         summary: item.summary,
         interviewDateTime: item.interviewDateTime || null,
         recruiterName: item.recruiterName || null,
@@ -1009,7 +1044,7 @@ export async function scanGmailInboxPreviewAction(options?: {
         fromEmail: item.fromEmail || null,
         originalSubject: item.originalSubject,
         date: item.originalDate.toISOString(),
-        selected: true, // Selected by default for existing applications
+        selected: true, // Auto-selected for matching existing applications
         messageId: item.messageId,
         threadId: item.threadId,
         emailSnippet: item.emailSnippet,
@@ -1045,6 +1080,7 @@ export async function scanGmailInboxPreviewAction(options?: {
     totalScanned: rawEmails.length,
     jobRelatedCount: jobEmails.length,
     items: candidates,
+    existingApplications: clientExistingApps,
   }
 }
 
