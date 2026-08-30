@@ -1054,6 +1054,13 @@ export async function scanGmailInboxPreviewAction(options?: {
     })
 
     if (matchedApp) {
+      const isSameStatus = !item.detectedStatus || item.detectedStatus === matchedApp.status
+      const hasNoNewInterview = !item.interviewDateTime
+      // If the application is already in this status and no interview is scheduled, skip redundant candidate!
+      if (isSameStatus && hasNoNewInterview) {
+        continue
+      }
+
       candidates.push({
         id: `candidate-${idx}-${item.messageId}`,
         actionType: 'UPDATE_EXISTING',

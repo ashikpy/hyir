@@ -60,6 +60,23 @@ function isIgnoredEmail(fromEmail: string, subject: string): boolean {
     return true;
   }
 
+  // Job alert marketing / newsletters / promotional broadcasts (e.g. Unstop "Your Target Role is Waiting!", LinkedIn Alerts)
+  if (
+    subjLower.includes("target role is waiting") ||
+    subjLower.includes("jobs you may be") ||
+    subjLower.includes("top job picks") ||
+    subjLower.includes("job recommendations") ||
+    subjLower.includes("new jobs matching") ||
+    subjLower.includes("daily job alert") ||
+    subjLower.includes("weekly job alert") ||
+    subjLower.includes("recommended jobs") ||
+    subjLower.includes("handpicked jobs") ||
+    subjLower.includes("digest") ||
+    subjLower.includes("newsletter")
+  ) {
+    return true;
+  }
+
   // Generic automated system newsletters
   if (subjLower.includes("security alert") || subjLower.includes("verification code") || subjLower.includes("password reset")) {
     return true;

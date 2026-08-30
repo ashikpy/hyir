@@ -133,12 +133,20 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             setIsGoogleConnected(false)
           }
         } else {
-          setCandidates(res.items)
+          // Filter out client-side dismissed message IDs
+          let dismissedIds: string[] = []
+          try {
+            const raw = localStorage.getItem('hyir_dismissed_emails')
+            if (raw) dismissedIds = JSON.parse(raw)
+          } catch {}
+
+          const filteredItems = res.items.filter((item) => !dismissedIds.includes(item.messageId))
+          setCandidates(filteredItems)
           setExistingApps(res.existingApplications || [])
           setTotalScanned(res.totalScanned)
           // Default selection: select matching existing applications
           const initialSelected = new Set<string>()
-          for (const item of res.items) {
+          for (const item of filteredItems) {
             if (item.selected) {
               initialSelected.add(item.id)
             }
@@ -150,6 +158,23 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
         setError(err?.message || 'Something went wrong during inbox scan.')
       }
     })
+  }
+
+  function handleDismissItem(candidateId: string, messageId: string) {
+    setCandidates((prev) => prev.filter((c) => c.id !== candidateId))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.delete(candidateId)
+      return next
+    })
+    try {
+      const raw = localStorage.getItem('hyir_dismissed_emails')
+      const existing: string[] = raw ? JSON.parse(raw) : []
+      if (!existing.includes(messageId)) {
+        existing.push(messageId)
+        localStorage.setItem('hyir_dismissed_emails', JSON.stringify(existing))
+      }
+    } catch {}
   }
 
   function toggleItemSelection(id: string) {
@@ -554,6 +579,19 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                                   {item.status.replace('_', ' ')}
                                 </span>
                               )}
+
+                              {/* Dismiss Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDismissItem(item.id, item.messageId)
+                                }}
+                                className="p-1 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/80 transition-colors cursor-pointer"
+                                title="Dismiss this email"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
 
