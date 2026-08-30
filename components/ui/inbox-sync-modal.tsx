@@ -324,9 +324,9 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                   </h4>
 
                   <div className="space-y-2">
-                    {result.items.map((item) => (
+                    {result.items.map((item, idx) => (
                       <div
-                        key={item.id}
+                        key={`${item.id}-${idx}-${item.date || ''}`}
                         className="p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-2"
                       >
                         <div className="flex items-center justify-between gap-2">
