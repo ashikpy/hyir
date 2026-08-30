@@ -21,7 +21,8 @@ import {
   Mail,
   FileText,
   Calendar,
-  Ghost
+  Ghost,
+  Briefcase,
 } from 'lucide-react'
 
 export interface TriageApp {
@@ -34,6 +35,7 @@ export interface TriageApp {
   workplaceType: string
   location: string | null
   salary: string | null
+  source: string | null
   applicationUrl: string | null
   contactName: string | null
   contactEmail: string | null
@@ -200,6 +202,7 @@ function getAppIssues(app: TriageApp): IssueTag[] {
 }
 
 export function extractAppSource(app: TriageApp): string | null {
+  if (app.source) return app.source
   if (app.notes) {
     const match = app.notes.match(/Source:\s*([A-Za-z0-9\s.-]+)/i)
     if (match && match[1]) return match[1].trim()
@@ -230,6 +233,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
 
   // Local state for fast drawer edits
   const [formUrl, setFormUrl] = useState('')
+  const [formSource, setFormSource] = useState('')
   const [formDateApplied, setFormDateApplied] = useState('')
   const [formSalary, setFormSalary] = useState('')
   const [formContactName, setFormContactName] = useState('')
@@ -329,6 +333,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
   useEffect(() => {
     if (activeApp) {
       setFormUrl(activeApp.applicationUrl || '')
+      setFormSource(activeApp.source || extractAppSource(activeApp) || '')
       setFormDateApplied(
         activeApp.dateApplied
           ? new Date(activeApp.dateApplied).toISOString().split('T')[0]
@@ -355,7 +360,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeAppId, formUrl, formDateApplied, formSalary, formContactName, formContactEmail, formStatus])
+  }, [activeAppId, formUrl, formSource, formDateApplied, formSalary, formContactName, formContactEmail, formStatus])
 
   async function handleSaveDrawer(advanceToNext = false) {
     if (!activeApp) return
@@ -363,6 +368,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     try {
       await quickUpdateTriageField(activeApp.id, {
         applicationUrl: formUrl.trim() || null,
+        source: formSource.trim() || null,
         dateApplied: formDateApplied.trim() ? formDateApplied.trim() : null,
         salary: formSalary.trim() || null,
         contactName: formContactName.trim() || null,
@@ -836,6 +842,44 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
                     )
                   })}
                 </div>
+              </div>
+
+              {/* Source / Job Board / Broker */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>Source / Broker</span>
+                  </label>
+                  {formSource && (
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      Active: {formSource}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {['Direct', 'Instahyre', 'Wellfound', 'LinkedIn', 'Naukri', 'Otta', 'Cutshort', 'Referral'].map((src) => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setFormSource(formSource.toLowerCase() === src.toLowerCase() ? '' : src)}
+                      className={`text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                        formSource.toLowerCase() === src.toLowerCase()
+                          ? 'bg-zinc-800 text-white border-zinc-600 ring-1 ring-zinc-500/30'
+                          : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                      }`}
+                    >
+                      {src}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={formSource}
+                  onChange={(e) => setFormSource(e.target.value)}
+                  placeholder="Or custom source (e.g. Y Combinator, Referral)..."
+                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-1.5 px-3 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
+                />
               </div>
 
               {/* Job Post URL */}

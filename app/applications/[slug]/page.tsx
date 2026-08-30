@@ -138,6 +138,15 @@ export default async function ApplicationDetailPage(props: { params: Promise<{ s
               <span className="text-sm font-medium text-zinc-200">{application.salary || '—'}</span>
             </div>
 
+            {application.source && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-zinc-500" /> Source
+                </span>
+                <span className="text-sm font-medium text-zinc-200">{application.source}</span>
+              </div>
+            )}
+
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-zinc-500" /> Last Updated

@@ -18,6 +18,7 @@ export async function createApplication(formData: FormData) {
   const jobType = (formData.get('jobType') as any) || 'FULL_TIME'
   const workplaceType = (formData.get('workplaceType') as any) || 'REMOTE'
   const salary = formData.get('salary') as string
+  const source = (formData.get('source') as string)?.trim() || null
   const location = formData.get('location') as string
   const contactName = formData.get('contactName') as string
   const contactEmail = formData.get('contactEmail') as string
@@ -51,6 +52,7 @@ export async function createApplication(formData: FormData) {
       applicationUrl: applicationUrl || null,
       jobDescriptionUrl: jobDescriptionUrl || null,
       salary: salary || null,
+      source: source || null,
       location: location || null,
       contactName: contactName || null,
       contactEmail: contactEmail || null,
@@ -92,6 +94,7 @@ export async function updateApplication(id: string, formData: FormData) {
   const dateApplied = formData.get('dateApplied') as string
   const applicationUrl = formData.get('applicationUrl') as string
   const salary = (formData.get('salary') as string)?.trim() || null
+  const source = (formData.get('source') as string)?.trim() || null
   const contactName = (formData.get('contactName') as string)?.trim() || null
   const contactEmail = (formData.get('contactEmail') as string)?.trim() || null
   const contactRole = (formData.get('contactRole') as string)?.trim() || null
@@ -181,6 +184,7 @@ export async function updateApplication(id: string, formData: FormData) {
         dateApplied: dateApplied ? new Date(dateApplied) : null,
         applicationUrl: applicationUrl || null,
         salary: salary || null,
+        source: source || null,
         contactName: contactName || null,
         contactEmail: contactEmail || null,
         contactRole: contactRole || null,
@@ -219,6 +223,7 @@ export async function quickUpdateTriageField(
     contactName?: string | null
     contactEmail?: string | null
     salary?: string | null
+    source?: string | null
     notes?: string | null
     status?: ApplicationStatus
     dateApplied?: string | Date | null
@@ -1211,6 +1216,7 @@ export async function applyInboxUpdatesAction(
           dateApplied: originalDate,
           contactName: item.recruiterName || null,
           contactEmail: item.recruiterEmail || null,
+          source: item.sourcePlatform || 'Gmail Sync',
           nextFollowUpDate: followUpDate,
           notes: `[email_id:${item.messageId}]\n${sourcePrefix}Imported from email: "${item.originalSubject}"\nSummary: ${item.summary}`,
         },

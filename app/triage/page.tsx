@@ -20,6 +20,7 @@ export default async function TriagePage() {
       workplaceType: true,
       location: true,
       salary: true,
+      source: true,
       applicationUrl: true,
       contactName: true,
       contactEmail: true,

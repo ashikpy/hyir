@@ -81,6 +81,7 @@ model Application {
   workplaceType     WorkplaceType     @default(REMOTE)
   location          String?
   salary            String?           // Free-form text for flexibility (e.g. "120k - 140k", "$100/hr")
+  source            String?           // e.g. "Instahyre", "Wellfound", "LinkedIn", "Direct", "Referral", "Naukri", "Otta"
   applicationUrl    String?
   jobDescriptionUrl String?
   

@@ -169,6 +169,7 @@ export default function NewApplicationPage() {
   // Step 2 State
   const [jobType, setJobType] = useState("FULL_TIME");
   const [workplaceType, setWorkplaceType] = useState("REMOTE");
+  const [source, setSource] = useState("Direct");
   const [location, setLocation] = useState("");
   const [dateApplied, setDateApplied] = useState(
     () => new Date().toISOString().split("T")[0],
@@ -184,6 +185,17 @@ export default function NewApplicationPage() {
   function handleUrlChange(url: string) {
     setApplicationUrl(url);
     setStep1Error("");
+    if (url) {
+      const lower = url.toLowerCase();
+      if (lower.includes("instahyre")) setSource("Instahyre");
+      else if (lower.includes("wellfound") || lower.includes("angel.co")) setSource("Wellfound");
+      else if (lower.includes("linkedin")) setSource("LinkedIn");
+      else if (lower.includes("naukri")) setSource("Naukri");
+      else if (lower.includes("otta")) setSource("Otta");
+      else if (lower.includes("cutshort")) setSource("Cutshort");
+      else if (lower.includes("cuvette")) setSource("Cuvette");
+      else if (lower.includes("hirist")) setSource("Hirist");
+    }
     if (!companyName && url) {
       try {
         const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
@@ -269,6 +281,7 @@ export default function NewApplicationPage() {
       formData.set("applicationUrl", applicationUrl);
       formData.set("jobType", jobType);
       formData.set("workplaceType", workplaceType);
+      if (source) formData.set("source", source);
       if (dateApplied) formData.set("dateApplied", dateApplied);
 
       const slug = await createApplication(formData);
@@ -515,6 +528,44 @@ export default function NewApplicationPage() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Source / Broker (Mandatory or Quick Select) */}
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-zinc-300">
+                    Source / Broker
+                  </label>
+                  {source && (
+                    <span className="text-[11px] text-zinc-400 font-mono">
+                      Selected: <strong className="text-white">{source}</strong>
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {['Direct', 'Instahyre', 'Wellfound', 'LinkedIn', 'Naukri', 'Otta', 'Cutshort', 'Referral'].map((src) => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setSource(source.toLowerCase() === src.toLowerCase() ? '' : src)}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                        source.toLowerCase() === src.toLowerCase()
+                          ? 'bg-white text-black border-white shadow-xs font-semibold'
+                          : 'bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                      }`}
+                    >
+                      {src}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  name="source"
+                  type="text"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  placeholder="Or enter custom broker (e.g. Instahyre, Wellfound, Referral)..."
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-2 px-3.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
+                />
               </div>
 
               {/* Workplace Type (Mandatory) */}
