@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
@@ -19,6 +19,7 @@ import {
   ChevronUp,
   ExternalLink,
   Link2,
+  Search,
 } from 'lucide-react'
 import {
   scanGmailInboxPreviewAction,
@@ -54,6 +55,152 @@ const statusColors: Record<ApplicationStatus, { bg: string; text: string; border
   REJECTED: { bg: 'bg-red-950/60', text: 'text-red-300', border: 'border-red-800/60' },
   GHOSTED: { bg: 'bg-zinc-900/60', text: 'text-zinc-400', border: 'border-zinc-800' },
   WITHDRAWN: { bg: 'bg-zinc-900/60', text: 'text-zinc-400', border: 'border-zinc-800' },
+}
+
+/**
+ * Custom Dropdown with Company Logos & Search for linking applications
+ */
+function ApplicationPickerDropdown({
+  currentAppId,
+  existingApps,
+  onSelect,
+}: {
+  currentAppId?: string
+  existingApps: ExistingAppOption[]
+  onSelect: (appId: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const selectedApp = existingApps.find((a) => a.id === currentAppId)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
+  const filteredApps = existingApps.filter(
+    (a) =>
+      a.companyName.toLowerCase().includes(search.toLowerCase()) ||
+      a.roleTitle.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div className="relative inline-block" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          setIsOpen(!isOpen)
+        }}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-zinc-200 transition-colors cursor-pointer max-w-[280px]"
+      >
+        {selectedApp ? (
+          <>
+            <CompanyLogo name={selectedApp.companyName} className="w-4 h-4 rounded shrink-0" />
+            <span className="font-semibold text-zinc-100 truncate">{selectedApp.companyName}</span>
+            {selectedApp.roleTitle && (
+              <span className="text-zinc-400 truncate text-[11px]">({selectedApp.roleTitle})</span>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="text-zinc-400">➕</span>
+            <span className="text-zinc-300 truncate">Create as New Draft</span>
+          </>
+        )}
+        <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0 ml-0.5" />
+      </button>
+
+      {isOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute left-0 top-full mt-1.5 z-50 w-72 bg-[#0c0c0e] border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col p-1.5 animate-in fade-in zoom-in-95 duration-100"
+          style={{ backgroundColor: '#0c0c0e' }}
+        >
+          {existingApps.length > 5 && (
+            <div className="p-1 pb-1.5 border-b border-zinc-850 mb-1 flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5 text-zinc-500 shrink-0 ml-1" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search applications..."
+                className="w-full bg-transparent px-1 py-0.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                autoFocus
+              />
+            </div>
+          )}
+
+          <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+            {/* Create as New Option */}
+            <button
+              type="button"
+              onClick={() => {
+                onSelect('__NEW__')
+                setIsOpen(false)
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                !currentAppId
+                  ? 'bg-zinc-800/80 text-white font-medium'
+                  : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-zinc-400">➕</span>
+                <span className="truncate">Create as New Application Draft</span>
+              </div>
+              {!currentAppId && <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+            </button>
+
+            <div className="px-2.5 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+              Your Applications ({existingApps.length})
+            </div>
+
+            {filteredApps.map((app) => {
+              const isCurr = app.id === currentAppId
+              return (
+                <button
+                  key={app.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(app.id)
+                    setIsOpen(false)
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                    isCurr
+                      ? 'bg-zinc-800/80 text-white font-medium'
+                      : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CompanyLogo name={app.companyName} className="w-4 h-4 rounded shrink-0" />
+                    <div className="min-w-0 truncate">
+                      <span className="font-medium text-zinc-200">{app.companyName}</span>
+                      {app.roleTitle && (
+                        <span className="text-zinc-500 text-[11px] ml-1.5 truncate">
+                          ({app.roleTitle})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isCurr && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
@@ -344,7 +491,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                   Ready to scan your recent job emails
                 </h4>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Hyir will inspect emails from the last 14 days. You can <strong>read the full emails</strong>, link items to existing applications, and confirm updates before applying.
+                  Hyir will inspect emails from the last 14 days. You can <strong>read the full emails</strong>, link items to existing applications with logos, and confirm updates before applying.
                 </p>
               </div>
 
@@ -425,7 +572,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             </div>
           )}
 
-          {/* Candidate Review List with Expandable Email & Match Dropdown */}
+          {/* Candidate Review List with Expandable Email & Custom Dropdown with Logos */}
           {hasScanned && !isScanning && !appliedStats && !error && (
             <div className="space-y-4">
               {/* Header & Controls */}
@@ -463,7 +610,8 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                     const isSelected = selectedIds.has(item.id)
                     const isExpanded = expandedEmailId === item.id
                     const isUpdate = item.actionType === 'UPDATE_EXISTING'
-                    const senderDisplay = item.recruiterName || item.fromName || item.recruiterEmail || item.fromEmail || 'Recruiter'
+                    const senderDisplay =
+                      item.recruiterName || item.fromName || item.recruiterEmail || item.fromEmail || 'Recruiter'
 
                     return (
                       <div
@@ -541,26 +689,17 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                             {item.summary}
                           </p>
 
-                          {/* Link to Application Dropdown */}
+                          {/* Custom Link to Application Selector with Logos */}
                           <div className="flex items-center gap-2 pl-6.5 pt-0.5">
                             <Link2 className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                             <label className="text-[11px] text-zinc-400 shrink-0 font-medium">
                               Link to:
                             </label>
-                            <select
-                              value={item.matchedApplicationId || '__NEW__'}
-                              onChange={(e) => handleLinkAppChange(item.id, e.target.value)}
-                              className="text-xs bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-zinc-200 focus:outline-none focus:border-zinc-600 cursor-pointer min-w-[200px] truncate"
-                            >
-                              <option value="__NEW__">➕ Create as New Application Draft</option>
-                              <optgroup label="Your Existing Applications">
-                                {existingApps.map((app) => (
-                                  <option key={app.id} value={app.id}>
-                                    🔗 {app.companyName} ({app.roleTitle || 'Role'})
-                                  </option>
-                                ))}
-                              </optgroup>
-                            </select>
+                            <ApplicationPickerDropdown
+                              currentAppId={item.matchedApplicationId}
+                              existingApps={existingApps}
+                              onSelect={(appId) => handleLinkAppChange(item.id, appId)}
+                            />
                           </div>
 
                           {/* Email metadata bar with expand toggle */}
