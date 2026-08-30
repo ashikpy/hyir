@@ -3,7 +3,22 @@
 import { useState, useEffect, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Mail, Sparkles, Loader2, CheckCircle2, AlertCircle, Calendar, X, Inbox, CheckSquare, Square, ArrowRight } from 'lucide-react'
+import {
+  Mail,
+  Sparkles,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Calendar,
+  X,
+  Inbox,
+  CheckSquare,
+  Square,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+} from 'lucide-react'
 import {
   scanGmailInboxPreviewAction,
   applyInboxUpdatesAction,
@@ -41,6 +56,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null)
   const [candidates, setCandidates] = useState<SyncCandidateItem[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null)
   const [totalScanned, setTotalScanned] = useState(0)
   const [appliedStats, setAppliedStats] = useState<{ updated: number; created: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -93,6 +109,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
     setError(null)
     setHasScanned(true)
     setAppliedStats(null)
+    setExpandedEmailId(null)
     startScanTransition(async () => {
       try {
         const res = await scanGmailInboxPreviewAction({ daysBack: 14 })
@@ -104,7 +121,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
         } else {
           setCandidates(res.items)
           setTotalScanned(res.totalScanned)
-          // Default selection: select only matching existing applications
+          // Default selection: select matching existing applications
           const initialSelected = new Set<string>()
           for (const item of res.items) {
             if (item.selected) {
@@ -130,6 +147,10 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
       }
       return next
     })
+  }
+
+  function toggleExpandEmail(id: string) {
+    setExpandedEmailId((prev) => (prev === id ? null : id))
   }
 
   function handleSelectAll() {
@@ -171,7 +192,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
 
       {/* Solid Modal Container */}
       <div
-        className="relative z-10 w-full max-w-xl bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl shadow-black overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150"
+        className="relative z-10 w-full max-w-2xl bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl shadow-black overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 duration-150"
         style={{ backgroundColor: '#09090b' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -281,7 +302,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                   Ready to scan your recent job emails
                 </h4>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Hyir will inspect emails from the last 14 days and let you <strong>review and approve</strong> any updates before adding them to your pipeline.
+                  Hyir will inspect emails from the last 14 days. You can <strong>read the full emails</strong>, verify company/role detection, and select which updates to apply.
                 </p>
               </div>
 
@@ -306,7 +327,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                 {isScanning ? 'Scanning recent emails & running AI classification...' : 'Applying selected updates to your pipeline...'}
               </p>
               <p className="text-[11px] text-zinc-500">
-                {isScanning ? 'Finding matching applications...' : 'Updating stage and logging activity timeline...'}
+                {isScanning ? 'Finding matching applications and decoding messages...' : 'Updating stage and logging activity timeline...'}
               </p>
             </div>
           )}
@@ -362,7 +383,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
             </div>
           )}
 
-          {/* Candidate Review List (Pre-Apply) */}
+          {/* Candidate Review List with Expandable Full Email Reader */}
           {hasScanned && !isScanning && !appliedStats && !error && (
             <div className="space-y-4">
               {/* Header & Controls */}
@@ -372,7 +393,7 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                     Discovered Updates ({candidates.length})
                   </h4>
                   <p className="text-[11px] text-zinc-400">
-                    Scanned {totalScanned} emails. Select items you want to apply.
+                    Scanned {totalScanned} emails. Click cards to read emails or check to apply.
                   </p>
                 </div>
                 {candidates.length > 0 && (
@@ -395,89 +416,155 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
                   <p className="text-[11px] text-zinc-500">Your job pipeline is up to date!</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[48vh] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
                   {candidates.map((item, idx) => {
                     const isSelected = selectedIds.has(item.id)
+                    const isExpanded = expandedEmailId === item.id
                     const isUpdate = item.actionType === 'UPDATE_EXISTING'
+                    const senderDisplay = item.recruiterName || item.fromName || item.recruiterEmail || item.fromEmail || 'Recruiter'
 
                     return (
                       <div
                         key={`${item.id}-${idx}`}
-                        onClick={() => toggleItemSelection(item.id)}
-                        className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-2 ${
+                        className={`rounded-xl border transition-all overflow-hidden ${
                           isSelected
-                            ? 'bg-zinc-900/90 border-zinc-700 shadow-xs'
-                            : 'bg-zinc-950/40 border-zinc-850 opacity-60 hover:opacity-100 hover:border-zinc-800'
+                            ? 'bg-zinc-900/90 border-zinc-750 shadow-xs'
+                            : 'bg-zinc-950/40 border-zinc-850 opacity-80 hover:opacity-100 hover:border-zinc-800'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <button
-                              type="button"
-                              className="text-zinc-400 hover:text-white mt-0.5 shrink-0"
-                            >
-                              {isSelected ? (
-                                <CheckSquare className="w-4 h-4 text-amber-400" />
-                              ) : (
-                                <Square className="w-4 h-4 text-zinc-600" />
-                              )}
-                            </button>
-
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-xs text-zinc-100 truncate">
-                                  {item.companyName}
-                                </span>
-                                {item.roleTitle && (
-                                  <span className="text-[11px] text-zinc-400 truncate">
-                                    · {item.roleTitle}
-                                  </span>
+                        {/* Main Item Row */}
+                        <div className="p-3.5 space-y-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {/* Checkbox */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleItemSelection(item.id)
+                                }}
+                                className="text-zinc-400 hover:text-white shrink-0 p-0.5 cursor-pointer"
+                                aria-label="Select update"
+                              >
+                                {isSelected ? (
+                                  <CheckSquare className="w-4 h-4 text-amber-400" />
+                                ) : (
+                                  <Square className="w-4 h-4 text-zinc-600" />
                                 )}
+                              </button>
+
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-xs text-zinc-100 truncate">
+                                    {item.companyName}
+                                  </span>
+                                  {item.roleTitle && (
+                                    <span className="text-[11px] text-zinc-400 truncate">
+                                      · {item.roleTitle}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isUpdate ? (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/50">
+                                  Matched App
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                  New Draft
+                                </span>
+                              )}
+
+                              {item.status && (
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                                    statusColors[item.status]?.bg || 'bg-zinc-800'
+                                  } ${statusColors[item.status]?.text || 'text-zinc-300'} ${
+                                    statusColors[item.status]?.border || 'border-zinc-700'
+                                  }`}
+                                >
+                                  {item.status.replace('_', ' ')}
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {isUpdate ? (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/50">
-                                Matched App
-                              </span>
-                            ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                New Draft
-                              </span>
-                            )}
+                          <p className="text-xs text-zinc-300 leading-relaxed font-normal pl-6.5">
+                            {item.summary}
+                          </p>
 
-                            {item.status && (
-                              <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${
-                                  statusColors[item.status]?.bg || 'bg-zinc-800'
-                                } ${statusColors[item.status]?.text || 'text-zinc-300'} ${
-                                  statusColors[item.status]?.border || 'border-zinc-700'
-                                }`}
+                          {/* Email metadata bar with expand toggle */}
+                          <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-500 border-t border-zinc-850 pl-6.5">
+                            <span className="truncate max-w-[260px]">
+                              Email: &quot;{item.originalSubject}&quot;
+                            </span>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {item.interviewDateTime && (
+                                <span className="inline-flex items-center gap-1 text-amber-400 font-medium text-[10px]">
+                                  <Calendar className="w-3 h-3" />
+                                  Calendar Sync
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => toggleExpandEmail(item.id)}
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400 hover:text-white bg-zinc-800/60 hover:bg-zinc-800 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
                               >
-                                {item.status.replace('_', ' ')}
-                              </span>
-                            )}
+                                <span>{isExpanded ? 'Hide Email' : 'Read Email'}</span>
+                                {isExpanded ? (
+                                  <ChevronUp className="w-3 h-3" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
 
-                        <p className="text-xs text-zinc-300 leading-relaxed font-normal pl-6.5">
-                          {item.summary}
-                        </p>
+                        {/* Expandable Full Email Reader */}
+                        {isExpanded && (
+                          <div className="border-t border-zinc-800 bg-[#060608] p-4 space-y-3 animate-in fade-in duration-150">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <div className="space-y-0.5 min-w-0">
+                                <div className="text-zinc-300 font-medium truncate">
+                                  <span className="text-zinc-500">From: </span>
+                                  <span>{senderDisplay}</span>
+                                  {(item.recruiterEmail || item.fromEmail) && (
+                                    <span className="text-zinc-500 ml-1">
+                                      &lt;{item.recruiterEmail || item.fromEmail}&gt;
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-zinc-500">
+                                  <span>Subject: </span>
+                                  <span className="text-zinc-400 font-medium">
+                                    {item.originalSubject}
+                                  </span>
+                                </div>
+                              </div>
 
-                        <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-500 border-t border-zinc-850 pl-6.5">
-                          <span className="truncate max-w-[280px]">
-                            Email: &quot;{item.originalSubject}&quot;
-                          </span>
+                              <a
+                                href={`https://mail.google.com/mail/u/0/#inbox/${item.threadId || item.messageId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 shrink-0 bg-cyan-950/40 border border-cyan-800/50 px-2.5 py-1 rounded-lg transition-colors"
+                              >
+                                <span>Open in Gmail</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
 
-                          {item.interviewDateTime && (
-                            <span className="inline-flex items-center gap-1 text-amber-400 font-medium text-[10px]">
-                              <Calendar className="w-3 h-3" />
-                              Calendar Sync
-                            </span>
-                          )}
-                        </div>
+                            {/* Email Body Viewer */}
+                            <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-850/80 max-h-56 overflow-y-auto text-xs text-zinc-300 leading-relaxed font-sans whitespace-pre-wrap selection:bg-zinc-800">
+                              {item.emailBody || item.emailSnippet || 'No email body available.'}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}

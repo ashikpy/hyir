@@ -879,9 +879,15 @@ export interface SyncCandidateItem {
   interviewDateTime?: string | null
   recruiterName?: string | null
   recruiterEmail?: string | null
+  fromName?: string | null
+  fromEmail?: string | null
   originalSubject: string
   date: string
   selected: boolean
+  messageId: string
+  threadId: string
+  emailSnippet?: string
+  emailBody?: string
 }
 
 export interface SyncPreviewResponse {
@@ -999,9 +1005,15 @@ export async function scanGmailInboxPreviewAction(options?: {
         interviewDateTime: item.interviewDateTime || null,
         recruiterName: item.recruiterName || null,
         recruiterEmail: item.recruiterEmail || null,
+        fromName: item.fromName || null,
+        fromEmail: item.fromEmail || null,
         originalSubject: item.originalSubject,
         date: item.originalDate.toISOString(),
         selected: true, // Selected by default for existing applications
+        messageId: item.messageId,
+        threadId: item.threadId,
+        emailSnippet: item.emailSnippet,
+        emailBody: item.emailBody,
       })
     } else {
       candidates.push({
@@ -1015,9 +1027,15 @@ export async function scanGmailInboxPreviewAction(options?: {
         interviewDateTime: item.interviewDateTime || null,
         recruiterName: item.recruiterName || null,
         recruiterEmail: item.recruiterEmail || null,
+        fromName: item.fromName || null,
+        fromEmail: item.fromEmail || null,
         originalSubject: item.originalSubject,
         date: item.originalDate.toISOString(),
         selected: false, // Unselected by default for new unknown applications
+        messageId: item.messageId,
+        threadId: item.threadId,
+        emailSnippet: item.emailSnippet,
+        emailBody: item.emailBody,
       })
     }
   }

@@ -13,10 +13,14 @@ export interface ParsedJobUpdate {
   interviewDateTime?: string | null; // ISO string if meeting detected
   recruiterName?: string | null;
   recruiterEmail?: string | null;
+  fromName?: string | null;
+  fromEmail?: string | null;
   actionRequired: boolean;
   suggestedAction?: string | null;
   originalSubject: string;
   originalDate: Date;
+  emailSnippet?: string;
+  emailBody?: string;
 }
 
 const IGNORED_DOMAINS = [
@@ -201,10 +205,14 @@ export function heuristicParseEmail(email: RawJobEmail): ParsedJobUpdate {
     interviewDateTime: null,
     recruiterName: email.fromName || null,
     recruiterEmail: email.fromEmail || null,
+    fromName: email.fromName || null,
+    fromEmail: email.fromEmail || null,
     actionRequired,
     suggestedAction,
     originalSubject: email.subject,
     originalDate: email.date,
+    emailSnippet: email.snippet,
+    emailBody: email.body,
   };
 }
 
@@ -319,10 +327,14 @@ Return ONLY valid JSON with this exact structure:
       interviewDateTime: parsed.interviewDateTime || null,
       recruiterName: parsed.recruiterName || email.fromName || null,
       recruiterEmail: parsed.recruiterEmail || email.fromEmail || null,
+      fromName: email.fromName || null,
+      fromEmail: email.fromEmail || null,
       actionRequired: Boolean(parsed.actionRequired),
       suggestedAction: parsed.suggestedAction || null,
       originalSubject: email.subject,
       originalDate: email.date,
+      emailSnippet: email.snippet,
+      emailBody: email.body,
     };
   } catch (err) {
     console.error("Error in parseJobEmailWithAI, falling back to heuristic:", err);
