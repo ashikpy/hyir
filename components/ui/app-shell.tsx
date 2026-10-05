@@ -6,6 +6,8 @@ import { AddApplicationButton } from "@/components/ui/add-app-button";
 import { UserMenu } from "@/components/ui/user-menu";
 import { GlobalHotkeys } from "@/components/ui/global-hotkeys";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { CopilotDrawer } from "@/components/ui/copilot-drawer";
+import { CopilotTrigger } from "@/components/ui/copilot-trigger";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -41,6 +43,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
       <GlobalHotkeys />
       <CommandPalette />
+      <CopilotDrawer />
+      <CopilotTrigger />
     </div>
   );
 }

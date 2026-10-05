@@ -93,6 +93,20 @@ export function Nav() {
         <div className="pt-4 mt-2 border-t border-zinc-900/80 space-y-1">
           <button
             type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-copilot'))}
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md text-zinc-300 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-all text-left cursor-pointer group"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span>AI Copilot</span>
+            </div>
+            <kbd className="text-[10px] font-mono text-zinc-500 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">
+              ⌘J
+            </kbd>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsInboxSyncOpen(true)}
             className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md text-amber-400/90 hover:text-amber-300 hover:bg-amber-950/20 border border-transparent hover:border-amber-900/30 transition-all text-left cursor-pointer group"
           >

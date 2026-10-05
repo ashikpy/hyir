@@ -16,7 +16,8 @@ import {
   ArrowRight,
   X,
   ExternalLink,
-  Command
+  Command,
+  Sparkles
 } from 'lucide-react'
 import { getSearchApplications } from '@/app/actions'
 import { CompanyLogo } from '@/components/ui/avatars'
@@ -168,6 +169,18 @@ export function CommandPalette() {
   ], [router])
 
   const actionItems = useMemo(() => [
+    {
+      id: 'act-copilot',
+      type: 'action',
+      title: 'AI Copilot Assistant',
+      subtitle: 'Query pipeline, update statuses, prep interviews',
+      icon: Sparkles,
+      badge: '⌘J',
+      action: () => {
+        setIsOpen(false)
+        window.dispatchEvent(new CustomEvent('toggle-copilot'))
+      },
+    },
     {
       id: 'act-new-app',
       type: 'action',
