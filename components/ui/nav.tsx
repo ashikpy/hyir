@@ -3,21 +3,56 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion } from 'motion/react'
 import { cn } from '@/lib/utils'
-import { ArrowUpDown, Search, Sparkles } from 'lucide-react'
+import {
+  ArrowUpDown,
+  BriefcaseBusiness,
+  CalendarClock,
+  ChartNoAxesColumn,
+  Columns3,
+  Inbox,
+  LayoutGrid,
+  MailSearch,
+  Search,
+  type LucideIcon,
+} from 'lucide-react'
 import { ImportExportModal } from './import-export-modal'
 import { InboxSyncModal } from './inbox-sync-modal'
-import { HyirLogo } from './hyr-logo'
+import { HyirLogo, HyirAiLogo } from './hyr-logo'
 import { getTriageCount } from '@/app/actions'
 
-const items = [
-  { name: 'Dashboard', href: '/' },
-  { name: 'Applications', href: '/applications' },
-  { name: 'Triage', href: '/triage', hasNotification: true },
-  { name: 'Pipeline', href: '/pipeline' },
-  { name: 'Follow-ups', href: '/follow-ups' },
-  { name: 'Analytics', href: '/analytics' },
+type NavItem = {
+  name: string
+  href: string
+  icon: LucideIcon
+  hasNotification?: boolean
+}
+
+const items: NavItem[] = [
+  { name: 'Dashboard', href: '/', icon: LayoutGrid },
+  { name: 'Applications', href: '/applications', icon: BriefcaseBusiness },
+  { name: 'Triage', href: '/triage', icon: Inbox, hasNotification: true },
+  { name: 'Pipeline', href: '/pipeline', icon: Columns3 },
+  { name: 'Follow-ups', href: '/follow-ups', icon: CalendarClock },
+  { name: 'Analytics', href: '/analytics', icon: ChartNoAxesColumn },
 ]
+
+function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <kbd
+      className={cn(
+        'font-sans text-[10px] leading-none text-zinc-500 px-1.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06]',
+        className
+      )}
+    >
+      {children}
+    </kbd>
+  )
+}
+
+const rowBase =
+  'group relative flex items-center gap-2.5 h-8 px-2.5 rounded-lg text-[13px] transition-colors cursor-pointer'
 
 export function Nav() {
   const pathname = usePathname()
@@ -44,104 +79,111 @@ export function Nav() {
 
   return (
     <>
-      <nav className="flex flex-col gap-1 w-48 shrink-0">
-        <div className="mb-6 px-3 flex items-center gap-2.5">
-          <HyirLogo className="w-5 h-5 text-white" />
-          <h2 className="text-lg font-semibold tracking-tight text-white">
-            Hyir
-          </h2>
-        </div>
+      <nav className="flex flex-col w-full">
+        {/* Brand */}
+        <Link href="/" className="flex items-center gap-2.5 px-2 h-9 mb-5 rounded-lg">
+          <span className="grid place-items-center w-7 h-7 rounded-lg bg-white shadow-[0_0_0_1px_rgb(255_255_255/0.1),0_4px_12px_-2px_rgb(255_255_255/0.15)]">
+            <HyirLogo className="w-4 h-4 text-black" />
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight text-white">Hyir</span>
+        </Link>
 
+        {/* Search */}
         <button
           type="button"
           onClick={openSearch}
-          className="flex items-center justify-between px-3 py-2 mb-4 text-xs font-medium rounded-lg text-zinc-400 bg-zinc-900/60 hover:bg-zinc-900 hover:text-zinc-200 border border-zinc-800 transition-colors text-left group cursor-pointer"
+          className="group flex items-center gap-2.5 h-9 px-2.5 mb-6 rounded-lg text-[13px] text-zinc-500 bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] hover:text-zinc-300 transition-colors cursor-pointer"
         >
-          <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300" />
-            <span>Search...</span>
-          </div>
-          <kbd className="text-[10px] font-mono text-zinc-500 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800/80">
-            ⌘K
-          </kbd>
+          <Search className="w-4 h-4" />
+          <span>Search</span>
+          <Kbd className="ml-auto">⌘K</Kbd>
         </button>
-        {items.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href))
-          const showTriageBadge = item.hasNotification && triageCount !== null && triageCount > 0
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-between',
-                isActive
-                  ? 'bg-zinc-900 text-zinc-50'
-                  : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900/50'
-              )}
-            >
-              <span>{item.name}</span>
-              {showTriageBadge && (
-                <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  {triageCount}
-                </span>
-              )}
-            </Link>
-          )
-        })}
+        {/* Primary */}
+        <div className="flex flex-col gap-0.5">
+          {items.map((item) => {
+            const isActive =
+              pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href))
+            const showTriageBadge =
+              item.hasNotification && triageCount !== null && triageCount > 0
+            const Icon = item.icon
 
-        <div className="pt-4 mt-2 border-t border-zinc-900/80 space-y-1">
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  rowBase,
+                  isActive ? 'text-white' : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03]'
+                )}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active"
+                    transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                    className="absolute inset-0 rounded-lg bg-white/[0.07] shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]"
+                  >
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[11px] h-4 w-[3px] rounded-r-full bg-white" />
+                  </motion.span>
+                )}
+                <Icon
+                  className={cn(
+                    'relative w-4 h-4 shrink-0 transition-colors',
+                    isActive ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300'
+                  )}
+                  strokeWidth={isActive ? 2.2 : 1.8}
+                />
+                <span className="relative">{item.name}</span>
+                {showTriageBadge && (
+                  <span className="relative ml-auto flex items-center gap-1.5 text-[11px] tabular-nums text-amber-300/90">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgb(251_191_36/0.8)]" />
+                    {triageCount}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Tools */}
+        <p className="px-2.5 mt-7 mb-2 text-[11px] font-medium text-zinc-600">Tools</p>
+        <div className="flex flex-col gap-0.5">
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-copilot'))}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md text-zinc-300 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-all text-left cursor-pointer group"
+            className={cn(rowBase, 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03] text-left')}
           >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span>AI Copilot</span>
-            </div>
-            <kbd className="text-[10px] font-mono text-zinc-500 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">
-              ⌘J
-            </kbd>
+            <HyirAiLogo className="w-4 h-4 shrink-0" />
+            <span>Copilot</span>
+            <Kbd className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">⌘J</Kbd>
           </button>
 
           <button
             type="button"
             onClick={() => setIsInboxSyncOpen(true)}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md text-amber-400/90 hover:text-amber-300 hover:bg-amber-950/20 border border-transparent hover:border-amber-900/30 transition-all text-left cursor-pointer group"
+            className={cn(rowBase, 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03] text-left')}
           >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span>Sync Inbox</span>
-            </div>
-            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300/80 border border-amber-500/20">
-              AI
-            </span>
+            <MailSearch className="w-4 h-4 shrink-0 text-zinc-500 group-hover:text-zinc-300" strokeWidth={1.8} />
+            <span>Sync inbox</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50 transition-colors text-left cursor-pointer"
+            className={cn(rowBase, 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03] text-left')}
           >
-            <ArrowUpDown className="w-4 h-4 text-zinc-500" />
-            <span>Import / Export</span>
+            <ArrowUpDown className="w-4 h-4 shrink-0 text-zinc-500 group-hover:text-zinc-300" strokeWidth={1.8} />
+            <span>Import / export</span>
           </button>
         </div>
       </nav>
 
       {isInboxSyncOpen && (
-        <InboxSyncModal
-          isOpen={isInboxSyncOpen}
-          onClose={() => setIsInboxSyncOpen(false)}
-        />
+        <InboxSyncModal isOpen={isInboxSyncOpen} onClose={() => setIsInboxSyncOpen(false)} />
       )}
 
       {isModalOpen && (
-        <ImportExportModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-        />
+        <ImportExportModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       )}
     </>
   )

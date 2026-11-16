@@ -8,6 +8,7 @@ import { GlobalHotkeys } from "@/components/ui/global-hotkeys";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { CopilotDrawer } from "@/components/ui/copilot-drawer";
 import { CopilotTrigger } from "@/components/ui/copilot-trigger";
+import { Plus } from "lucide-react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -20,15 +21,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-full bg-black text-zinc-50 flex w-full">
       {/* Left Sidebar */}
-      <aside className="w-64 border-r border-zinc-900 bg-black p-6 flex flex-col h-full sticky top-0">
+      <aside className="w-60 shrink-0 border-r border-white/[0.06] bg-zinc-950 px-3 py-5 flex flex-col h-full sticky top-0">
         <Nav />
-        <div className="mt-auto space-y-3">
-          <AddApplicationButton className="flex items-center justify-between w-full py-2 px-3 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl transition-all text-zinc-200 shadow-xs">
-            <span className="flex items-center gap-1.5">
-              <span className="text-sm font-light text-zinc-400">+</span>
-              <span>Add Application</span>
-            </span>
-            <kbd className="text-[10px] font-mono text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">
+        <div className="mt-auto space-y-2 pt-6">
+          <AddApplicationButton className="group flex items-center gap-2 w-full h-9 px-2.5 rounded-lg bg-white text-zinc-950 text-[13px] font-medium shadow-[inset_0_-1px_0_rgb(0_0_0/0.1),0_1px_2px_rgb(0_0_0/0.5)] hover:bg-zinc-200 active:translate-y-px transition-all">
+            <Plus className="w-4 h-4" strokeWidth={2.2} />
+            <span>New application</span>
+            <kbd className="ml-auto font-sans text-[10px] leading-none px-1.5 py-1 rounded-md bg-black/[0.06] text-zinc-500">
               N
             </kbd>
           </AddApplicationButton>

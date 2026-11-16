@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef, useTransition, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { HyirAiLogo } from './hyr-logo'
+import { HyirAiMark } from './hyir-ai-mark'
+import ShinyText from './shiny-text'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Sparkles,
   X,
-  Send,
   Loader2,
   Trash2,
   Settings,
@@ -27,9 +28,14 @@ import {
   FileText,
   Mail,
   Zap,
+  ArrowUp,
+  ChartNoAxesColumn,
+  Target,
+  Plus,
 } from 'lucide-react'
 import { CopilotMessage, CopilotAction } from '@/lib/copilot-service'
 import { ApplicationStatus } from '@prisma/client'
+import { useMounted } from '@/components/ui/use-mounted'
 
 const statusColors: Record<ApplicationStatus, { bg: string; text: string; border: string }> = {
   SAVED: { bg: 'bg-zinc-800/70', text: 'text-zinc-300', border: 'border-zinc-700' },
@@ -46,21 +52,45 @@ const statusColors: Record<ApplicationStatus, { bg: string; text: string; border
 }
 
 const DEFAULT_SUGGESTIONS = [
-  '📊 Pipeline summary',
-  '⏰ Overdue follow-ups',
-  '🎯 Prep for interview',
-  '✉️ Draft follow-up email',
-  '➕ Track new job',
+  'Pipeline summary',
+  'Overdue follow-ups',
+  'Prep for interview',
+  'Draft follow-up email',
+  'Track new job',
 ]
+
+const STARTER_PROMPTS: { label: string; hint: string; icon: typeof Clock }[] = [
+  { label: 'Pipeline summary', hint: 'Where every application stands', icon: ChartNoAxesColumn },
+  { label: 'Overdue follow-ups', hint: 'Who you owe a reply', icon: Clock },
+  { label: 'Prep for interview', hint: 'Questions and notes for the next one', icon: Target },
+  { label: 'Draft follow-up email', hint: 'A short, polite nudge', icon: Mail },
+  { label: 'Track new job', hint: 'Add a role from a link or name', icon: Plus },
+]
+
+const API_KEY_STORAGE_KEY = 'hyir_gemini_api_key'
+
+function readStoredApiKey() {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem(API_KEY_STORAGE_KEY) || ''
+}
+
+/** Timestamp-based message id; kept outside the component so render stays pure. */
+function createMessageId(suffix: string) {
+  return `msg-${Date.now()}-${suffix}`
+}
 
 /**
  * Lightweight, safe Markdown-to-JSX renderer
  */
+// Models like to open headings and bullets with emoji. Drop them so replies read like text.
+const LEADING_EMOJI = /^(?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\u{FE0F}\u{200D}]\s*)+/u
+const stripEmoji = (text: string) => text.replace(LEADING_EMOJI, '')
+
 function MarkdownView({ content }: { content: string }) {
   const lines = useMemo(() => content.split('\n'), [content])
 
   return (
-    <div className="text-xs leading-relaxed space-y-2 text-zinc-200">
+    <div className="text-[13px] leading-[1.65] space-y-1.5 text-zinc-300">
       {lines.map((line, idx) => {
         const trimmed = line.trim()
 
@@ -68,30 +98,30 @@ function MarkdownView({ content }: { content: string }) {
           return <div key={idx} className="h-1" />
         }
 
-        // Heading 3: ### Title
-        if (trimmed.startsWith('### ')) {
-          return (
-            <h4 key={idx} className="font-semibold text-sm text-zinc-100 mt-2 mb-1 flex items-center gap-1.5">
-              {formatInline(trimmed.replace('### ', ''))}
-            </h4>
-          )
+        // Horizontal rule: --- or ***
+        if (/^(-{3,}|\*{3,})$/.test(trimmed)) {
+          return <hr key={idx} className="my-3 border-white/[0.06]" />
         }
 
-        // Heading 2: ## Title
-        if (trimmed.startsWith('## ')) {
+        // Headings: ## / ###
+        const heading = trimmed.match(/^(#{1,4})\s+(.*)$/)
+        if (heading) {
           return (
-            <h3 key={idx} className="font-semibold text-sm text-zinc-50 mt-3 mb-1.5 flex items-center gap-1.5">
-              {formatInline(trimmed.replace('## ', ''))}
-            </h3>
+            <h4
+              key={idx}
+              className={`font-medium text-zinc-100 ${idx === 0 ? '' : 'pt-2'} ${heading[1].length <= 2 ? 'text-sm' : 'text-[13px]'}`}
+            >
+              {formatInline(stripEmoji(heading[2]))}
+            </h4>
           )
         }
 
         // Bullet list item: - or *
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
           return (
-            <div key={idx} className="flex items-start gap-2 pl-1">
-              <span className="text-zinc-500 font-bold shrink-0 mt-0.5">•</span>
-              <span className="flex-1">{formatInline(trimmed.replace(/^[-*]\s+/, ''))}</span>
+            <div key={idx} className="flex items-start gap-2.5 pl-0.5">
+              <span className="mt-[9px] w-1 h-1 rounded-full bg-zinc-600 shrink-0" />
+              <span className="flex-1">{formatInline(stripEmoji(trimmed.replace(/^[-*]\s+/, '')))}</span>
             </div>
           )
         }
@@ -100,9 +130,9 @@ function MarkdownView({ content }: { content: string }) {
         const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/)
         if (numMatch) {
           return (
-            <div key={idx} className="flex items-start gap-2 pl-1">
-              <span className="text-zinc-500 font-mono text-[11px] shrink-0 mt-0.5">{numMatch[1]}.</span>
-              <span className="flex-1">{formatInline(numMatch[2])}</span>
+            <div key={idx} className="flex items-start gap-2.5 pl-0.5">
+              <span className="text-zinc-500 tabular-nums shrink-0">{numMatch[1]}.</span>
+              <span className="flex-1">{formatInline(stripEmoji(numMatch[2]))}</span>
             </div>
           )
         }
@@ -110,17 +140,13 @@ function MarkdownView({ content }: { content: string }) {
         // Blockquote: >
         if (trimmed.startsWith('> ')) {
           return (
-            <div key={idx} className="border-l-2 border-amber-500/50 bg-amber-950/10 px-3 py-1.5 my-1.5 text-zinc-300 italic rounded-r">
+            <div key={idx} className="border-l-2 border-white/10 pl-3 my-1.5 text-zinc-400">
               {formatInline(trimmed.replace(/^>\s+/, ''))}
             </div>
           )
         }
 
-        return (
-          <p key={idx} className="text-zinc-300">
-            {formatInline(line)}
-          </p>
-        )
+        return <p key={idx}>{formatInline(stripEmoji(trimmed))}</p>
       })}
     </div>
   )
@@ -133,21 +159,21 @@ function formatInline(text: string) {
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <strong key={i} className="font-semibold text-zinc-100">
+        <strong key={i} className="font-medium text-zinc-100">
           {part.slice(2, -2)}
         </strong>
       )
     }
     if (part.startsWith('`') && part.endsWith('`')) {
       return (
-        <code key={i} className="bg-zinc-800/80 text-amber-300 px-1 py-0.5 rounded text-[11px] font-mono border border-zinc-700/60">
+        <code key={i} className="bg-white/[0.06] text-zinc-200 px-1 py-0.5 rounded text-[12px] font-mono">
           {part.slice(1, -1)}
         </code>
       )
     }
     if (part.startsWith('*') && part.endsWith('*')) {
       return (
-        <em key={i} className="italic text-zinc-300">
+        <em key={i} className="italic text-zinc-400">
           {part.slice(1, -1)}
         </em>
       )
@@ -156,16 +182,63 @@ function formatInline(text: string) {
   })
 }
 
+type StatusUpdatedApp = Extract<CopilotAction, { type: 'STATUS_UPDATED' }>['app']
+
+function StatusUpdatedCard({
+  app,
+  onUndo,
+  onNavigate,
+}: {
+  app: StatusUpdatedApp
+  onUndo: (appId: string, prevStatus: ApplicationStatus) => void
+  onNavigate: () => void
+}) {
+  return (
+    <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase font-mono tracking-wider font-semibold text-cyan-400">
+          Pipeline State Transition
+        </span>
+        <button
+          type="button"
+          onClick={() => onUndo(app.id, app.previousStatus)}
+          className="text-[10px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1 hover:underline cursor-pointer"
+        >
+          <RotateCcw className="w-2.5 h-2.5" />
+          Undo
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={`text-[10px] font-semibold px-2 py-0.5 border rounded-full line-through opacity-70 ${statusColors[app.previousStatus]?.bg || 'bg-zinc-800'} ${statusColors[app.previousStatus]?.text || 'text-zinc-400'} ${statusColors[app.previousStatus]?.border || 'border-zinc-700'}`}>
+          {app.previousStatus}
+        </span>
+        <ArrowRight className="w-3 h-3 text-zinc-500" />
+        <span className={`text-[10px] font-semibold px-2 py-0.5 border rounded-full ${statusColors[app.newStatus]?.bg || 'bg-zinc-800'} ${statusColors[app.newStatus]?.text || 'text-zinc-200'} ${statusColors[app.newStatus]?.border || 'border-zinc-700'}`}>
+          {app.newStatus}
+        </span>
+      </div>
+      <Link
+        href={`/applications/${app.slug}`}
+        onClick={onNavigate}
+        className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 pt-1"
+      >
+        <span>Open {app.companyName}</span>
+        <ExternalLink className="w-2.5 h-2.5" />
+      </Link>
+    </div>
+  )
+}
+
 export function CopilotDrawer() {
   const [isOpen, setIsOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
   const [messages, setMessages] = useState<CopilotMessage[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [modelBadge, setModelBadge] = useState('Smart Mode')
+  const [savedApiKey, setSavedApiKey] = useState(readStoredApiKey)
+  const [modelBadge, setModelBadge] = useState(savedApiKey ? 'Gemini 3.5 Flash' : 'Smart Mode')
   const [showSettings, setShowSettings] = useState(false)
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [savedApiKey, setSavedApiKey] = useState('')
+  const [apiKeyInput, setApiKeyInput] = useState(savedApiKey)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
 
@@ -173,20 +246,25 @@ export function CopilotDrawer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    setMounted(true)
-    const storedKey = localStorage.getItem('hyir_gemini_api_key') || ''
-    setSavedApiKey(storedKey)
-    setApiKeyInput(storedKey)
-    if (storedKey) {
+  // Re-sync API key input and badge with the stored key whenever the drawer
+  // or settings panel opens/closes (adjust state during render)
+  const panelKey = `${isOpen}|${showSettings}`
+  const [prevPanelKey, setPrevPanelKey] = useState(panelKey)
+  if (prevPanelKey !== panelKey) {
+    setPrevPanelKey(panelKey)
+    setApiKeyInput(savedApiKey)
+    if (savedApiKey) {
       setModelBadge('Gemini 3.5 Flash')
     }
+  }
 
+  useEffect(() => {
     const handleToggle = () => setIsOpen((prev) => !prev)
-    const handleOpen = (e: any) => {
+    const handleOpen = (e: Event) => {
       setIsOpen(true)
-      if (e?.detail?.prompt) {
-        setInput(e.detail.prompt)
+      const prompt = e instanceof CustomEvent ? (e.detail as { prompt?: unknown } | null)?.prompt : undefined
+      if (typeof prompt === 'string' && prompt) {
+        setInput(prompt)
       }
     }
 
@@ -227,7 +305,7 @@ export function CopilotDrawer() {
 
   const handleSaveApiKey = () => {
     const trimmed = apiKeyInput.trim()
-    localStorage.setItem('hyir_gemini_api_key', trimmed)
+    localStorage.setItem(API_KEY_STORAGE_KEY, trimmed)
     setSavedApiKey(trimmed)
     setShowSettings(false)
     setModelBadge(trimmed ? 'Gemini 3.5 Flash' : 'Smart Mode')
@@ -236,7 +314,7 @@ export function CopilotDrawer() {
       setMessages((prev) => [
         ...prev,
         {
-          id: `msg-${Date.now()}-activated`,
+          id: createMessageId('activated'),
           role: 'assistant',
           content: '⚡ **Google Gemini 3.5 Flash Connected!** Your API key is verified and active. I have live awareness of your pipeline and can execute tools, summarize stats, and draft custom outreach.',
           createdAt: new Date().toISOString(),
@@ -270,7 +348,7 @@ export function CopilotDrawer() {
     if (!query || isLoading) return
 
     const userMessage: CopilotMessage = {
-      id: `msg-${Date.now()}-user`,
+      id: createMessageId('user'),
       role: 'user',
       content: query,
       createdAt: new Date().toISOString(),
@@ -307,7 +385,7 @@ export function CopilotDrawer() {
       const data = await res.json()
 
       const assistantMessage: CopilotMessage = {
-        id: `msg-${Date.now()}-assistant`,
+        id: createMessageId('assistant'),
         role: 'assistant',
         content: data.reply,
         createdAt: new Date().toISOString(),
@@ -324,11 +402,11 @@ export function CopilotDrawer() {
       if (data.action) {
         router.refresh()
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage: CopilotMessage = {
-        id: `msg-${Date.now()}-err`,
+        id: createMessageId('err'),
         role: 'assistant',
-        content: `⚠️ ${err.message || 'Something went wrong while processing your request.'}`,
+        content: `⚠️ ${(err instanceof Error && err.message) || 'Something went wrong while processing your request.'}`,
         createdAt: new Date().toISOString(),
         suggestions: DEFAULT_SUGGESTIONS,
       }
@@ -375,29 +453,24 @@ export function CopilotDrawer() {
         }`}
       >
         {/* Drawer Header */}
-        <div className="px-5 py-4 border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500/20 via-purple-500/20 to-blue-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 shadow-xs shadow-amber-500/10">
-              <Sparkles className="w-4 h-4 animate-pulse text-amber-300" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold tracking-tight text-white">Hyir Copilot</h3>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                  {modelBadge}
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400">Personal job search assistant & command runner</p>
-            </div>
+        <div className="h-14 px-4 border-b border-white/[0.06] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <HyirAiLogo className="w-[18px] h-[18px] shrink-0" />
+            <h3 className="text-sm font-medium text-white">Copilot</h3>
+            <span className="flex items-center gap-1.5 text-xs text-zinc-500 truncate">
+              <span className="w-1 h-1 rounded-full bg-zinc-600" />
+              {modelBadge}
+            </span>
           </div>
 
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setShowSettings(!showSettings)}
-              title="Copilot Settings"
-              className={`p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-colors cursor-pointer ${
-                showSettings ? 'bg-zinc-900 text-amber-300' : ''
+              title="Copilot settings"
+              aria-label="Copilot settings"
+              className={`grid place-items-center w-8 h-8 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors cursor-pointer ${
+                showSettings ? 'bg-white/[0.06] text-zinc-100' : ''
               }`}
             >
               <Settings className="w-4 h-4" />
@@ -408,7 +481,8 @@ export function CopilotDrawer() {
                 type="button"
                 onClick={handleClearHistory}
                 title="Clear conversation"
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-900 transition-colors cursor-pointer"
+                aria-label="Clear conversation"
+                className="grid place-items-center w-8 h-8 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -417,7 +491,8 @@ export function CopilotDrawer() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors cursor-pointer ml-1"
+              aria-label="Close Copilot"
+              className="grid place-items-center w-8 h-8 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -459,28 +534,33 @@ export function CopilotDrawer() {
         {/* Chat Messages Body */}
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col justify-center items-center text-center p-6 space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-center text-amber-400 shadow-inner">
-                <Sparkles className="w-6 h-6 animate-pulse" />
+            <div className="h-full flex flex-col px-1 pb-2">
+              <div className="flex-1 min-h-0 grid place-items-center py-6">
+                <HyirAiMark className="w-40 h-40 max-h-full" />
               </div>
-              <div className="space-y-1.5 max-w-sm">
-                <h4 className="text-sm font-semibold text-zinc-100">Welcome to Hyir Copilot</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Query your pipeline, execute live status updates, track new applications, draft emails, and prepare for interviews using natural language.
+              <div className="mb-6 px-2">
+                <h4 className="text-xl font-medium tracking-tight text-zinc-100">What can I help with?</h4>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-500">
+                  Ask about your pipeline, or tell me what to change. I can move stages, log jobs and draft emails.
                 </p>
               </div>
 
-              {/* Default prompt suggestion cards */}
-              <div className="w-full grid grid-cols-1 gap-2 pt-2 text-left">
-                {DEFAULT_SUGGESTIONS.map((suggestion) => (
+              <div className="flex flex-col">
+                {STARTER_PROMPTS.map(({ label, hint, icon: Icon }) => (
                   <button
-                    key={suggestion}
+                    key={label}
                     type="button"
-                    onClick={() => handleSendMessage(suggestion)}
-                    className="p-2.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 text-xs text-zinc-300 hover:text-white transition-all text-left flex items-center justify-between group cursor-pointer"
+                    onClick={() => handleSendMessage(label)}
+                    className="group flex items-center gap-3 px-2 py-2.5 rounded-lg text-left hover:bg-white/[0.04] transition-colors cursor-pointer"
                   >
-                    <span>{suggestion}</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
+                    <span className="grid place-items-center w-8 h-8 rounded-lg border border-white/[0.06] bg-white/[0.02] text-zinc-500 group-hover:text-zinc-200 transition-colors shrink-0">
+                      <Icon className="w-4 h-4" strokeWidth={1.8} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] text-zinc-200">{label}</span>
+                      <span className="block text-xs text-zinc-500 truncate">{hint}</span>
+                    </span>
+                    <ArrowRight className="ml-auto w-3.5 h-3.5 text-zinc-600 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                   </button>
                 ))}
               </div>
@@ -493,17 +573,17 @@ export function CopilotDrawer() {
               >
                 {/* Message Bubble */}
                 <div
-                  className={`rounded-2xl px-4 py-3 text-xs leading-relaxed max-w-[92%] shadow-xs ${
+                  className={
                     msg.role === 'user'
-                      ? 'bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-br-xs'
-                      : 'bg-zinc-900/40 border border-zinc-800/60 text-zinc-200 rounded-tl-xs w-full'
-                  }`}
+                      ? 'max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 bg-white/[0.07] [&_p]:text-zinc-100'
+                      : 'w-full px-1'
+                  }
                 >
                   <MarkdownView content={msg.content} />
 
                   {/* Render Rich Action Card if Action Executed */}
                   {msg.action && (
-                    <div className="mt-3 pt-3 border-t border-zinc-800/80">
+                    <div className="mt-3">
                       {/* 1. APPLICATION CREATED CARD */}
                       {msg.action.type === 'APPLICATION_CREATED' && (
                         <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2">
@@ -538,7 +618,7 @@ export function CopilotDrawer() {
                           <Link
                             href={`/applications/${msg.action.app.slug}`}
                             onClick={() => setIsOpen(false)}
-                            className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 font-medium pt-1 group"
+                            className="inline-flex items-center gap-1.5 text-xs text-zinc-300 hover:text-white font-medium pt-1 group"
                           >
                             <span>View application details</span>
                             <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
@@ -589,43 +669,13 @@ export function CopilotDrawer() {
                       )}
 
                       {/* 2. STATUS UPDATED CARD */}
-                      {msg.action.type === 'STATUS_UPDATED' && (() => {
-                        const app = msg.action.app
-                        return (
-                          <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] uppercase font-mono tracking-wider font-semibold text-cyan-400">
-                                Pipeline State Transition
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleUndoStatus(app.id, app.previousStatus)}
-                                className="text-[10px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1 hover:underline cursor-pointer"
-                              >
-                                <RotateCcw className="w-2.5 h-2.5" />
-                                Undo
-                              </button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 border rounded-full line-through opacity-70 ${statusColors[app.previousStatus]?.bg || 'bg-zinc-800'} ${statusColors[app.previousStatus]?.text || 'text-zinc-400'} ${statusColors[app.previousStatus]?.border || 'border-zinc-700'}`}>
-                                {app.previousStatus}
-                              </span>
-                              <ArrowRight className="w-3 h-3 text-zinc-500" />
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 border rounded-full ${statusColors[app.newStatus]?.bg || 'bg-zinc-800'} ${statusColors[app.newStatus]?.text || 'text-zinc-200'} ${statusColors[app.newStatus]?.border || 'border-zinc-700'}`}>
-                                {app.newStatus}
-                              </span>
-                            </div>
-                            <Link
-                              href={`/applications/${app.slug}`}
-                              onClick={() => setIsOpen(false)}
-                              className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 pt-1"
-                            >
-                              <span>Open {app.companyName}</span>
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </Link>
-                          </div>
-                        )
-                      })()}
+                      {msg.action.type === 'STATUS_UPDATED' && (
+                        <StatusUpdatedCard
+                          app={msg.action.app}
+                          onUndo={handleUndoStatus}
+                          onNavigate={() => setIsOpen(false)}
+                        />
+                      )}
 
                       {/* 3. FOLLOW-UP SCHEDULED CARD */}
                       {msg.action.type === 'FOLLOW_UP_SCHEDULED' && (
@@ -788,13 +838,13 @@ export function CopilotDrawer() {
 
                 {/* Follow-up Suggestions Chips */}
                 {msg.role === 'assistant' && msg.suggestions && msg.suggestions.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1 w-full">
+                  <div className="flex flex-wrap gap-1.5 pt-1 px-1 w-full">
                     {msg.suggestions.map((suggestion) => (
                       <button
                         key={suggestion}
                         type="button"
                         onClick={() => handleSendMessage(suggestion)}
-                        className="px-2.5 py-1 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                        className="h-7 px-2.5 rounded-lg border border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.03] text-xs text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
                       >
                         {suggestion}
                       </button>
@@ -807,58 +857,56 @@ export function CopilotDrawer() {
 
           {/* Typing Indicator */}
           {isLoading && (
-            <div className="flex items-center gap-2 p-3 bg-zinc-900/40 border border-zinc-800/50 rounded-2xl rounded-tl-xs max-w-[85%] text-xs text-zinc-400">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-              <span>Analyzing pipeline & executing tools...</span>
+            <div role="status" aria-label="Copilot is thinking" className="flex items-center gap-2.5 px-1 animate-in fade-in duration-300">
+              <HyirAiMark
+                className="w-8 h-8 shrink-0"
+                scale={0.8}
+                speed={14}
+                intro={false}
+                rimPx={0.75}
+              />
+              <ShinyText
+                text="Thinking"
+                color="#a1a1aa"
+                shineColor="#ffffff"
+                speed={1.4}
+                className="text-sm"
+              />
             </div>
           )}
         </div>
 
         {/* Input Form Footer */}
-        <div className="p-4 border-t border-zinc-900 bg-zinc-950/90 backdrop-blur-md shrink-0 space-y-2">
-          <div className="relative flex items-end bg-zinc-900/80 border border-zinc-800 focus-within:border-zinc-700 rounded-2xl transition-all shadow-inner">
+        <div className="px-4 pt-2 pb-4 shrink-0">
+          <div className="flex items-end gap-2 rounded-2xl bg-white/[0.03] border border-white/[0.08] focus-within:border-white/[0.16] transition-colors p-1.5 pl-3.5">
             <textarea
               ref={textareaRef}
               rows={1}
               value={input}
               onChange={handleInputResize}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything or command: 'Move Figma to Interview'..."
-              className="w-full bg-transparent px-4 py-3 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none resize-none max-h-32"
+              placeholder="Ask or tell Copilot to do something"
+              aria-label="Message Copilot"
+              className="flex-1 bg-transparent py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none resize-none max-h-32"
             />
-            <div className="p-2 shrink-0">
-              <button
-                type="button"
-                disabled={!input.trim() || isLoading}
-                onClick={() => handleSendMessage()}
-                className="w-8 h-8 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:pointer-events-none text-zinc-950 flex items-center justify-center transition-all cursor-pointer shadow-xs shadow-amber-500/20"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Send className="w-3.5 h-3.5" />
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={!input.trim() || isLoading}
+              onClick={() => handleSendMessage()}
+              aria-label="Send message"
+              className="grid place-items-center w-8 h-8 shrink-0 rounded-xl bg-white text-zinc-950 hover:bg-zinc-200 disabled:bg-white/[0.06] disabled:text-zinc-600 transition-colors cursor-pointer disabled:cursor-default"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowUp className="w-4 h-4" strokeWidth={2.2} />
+              )}
+            </button>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-zinc-500 px-1">
-            <span>
-              <kbd className="font-mono bg-zinc-900 px-1 py-0.5 rounded border border-zinc-800 text-zinc-400">
-                Enter
-              </kbd>{' '}
-              to send ·{' '}
-              <kbd className="font-mono bg-zinc-900 px-1 py-0.5 rounded border border-zinc-800 text-zinc-400">
-                Shift+Enter
-              </kbd>{' '}
-              for new line
-            </span>
-            <span>
-              <kbd className="font-mono bg-zinc-900 px-1 py-0.5 rounded border border-zinc-800 text-zinc-400">
-                ⌘J
-              </kbd>{' '}
-              to toggle
-            </span>
+          <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-zinc-600">
+            <span>Enter to send, Shift+Enter for a new line</span>
+            <span>⌘J to close</span>
           </div>
         </div>
       </div>
