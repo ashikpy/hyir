@@ -95,7 +95,7 @@ export async function createGoogleCalendarApiEvent(
 
     const data = await res.json();
     return { success: true, eventId: data.id };
-  } catch (err: any) {
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

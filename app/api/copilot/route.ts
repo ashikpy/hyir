@@ -49,10 +49,10 @@ export async function POST(req: NextRequest) {
       success: true,
       ...result,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Copilot route error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to process request" },
+      { error: (error instanceof Error && error.message) || "Failed to process request" },
       { status: 500 }
     );
   }

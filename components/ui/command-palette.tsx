@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { getSearchApplications } from '@/app/actions'
 import { CompanyLogo } from '@/components/ui/avatars'
+import { useMounted } from '@/components/ui/use-mounted'
 import { ApplicationStatus } from '@prisma/client'
 
 interface SearchItem {
@@ -34,6 +35,10 @@ interface SearchItem {
   applicationUrl: string | null
   contactName: string | null
 }
+
+type ResultItem =
+  | { id: string; type: 'app'; data: SearchItem }
+  | { id: string; type: 'nav' | 'action'; data: { action: () => void } }
 
 function StatusPill({ status }: { status: ApplicationStatus }) {
   const statusConfig: Record<ApplicationStatus, string> = {
@@ -64,16 +69,15 @@ export function CommandPalette() {
   const [query, setQuery] = useState('')
   const [applications, setApplications] = useState<SearchItem[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
   const [isLoading, setIsLoading] = useState(false)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
   
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
   useEffect(() => {
-    setMounted(true)
-
     const handleKeyDown = (e: KeyboardEvent) => {
       // Toggle palette on Cmd+K or Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -95,10 +99,20 @@ export function CommandPalette() {
     }
   }, [isOpen])
 
+  // Reset palette state when it opens/closes (adjust state during render)
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen)
+    if (isOpen) {
+      setIsLoading(true)
+    } else {
+      setQuery('')
+      setSelectedIndex(0)
+    }
+  }
+
   // Fetch applications whenever the palette opens
   useEffect(() => {
     if (isOpen) {
-      setIsLoading(true)
       getSearchApplications()
         .then((apps) => {
           setApplications(apps as SearchItem[])
@@ -110,9 +124,6 @@ export function CommandPalette() {
       setTimeout(() => {
         inputRef.current?.focus()
       }, 50)
-    } else {
-      setQuery('')
-      setSelectedIndex(0)
     }
   }, [isOpen])
 
@@ -224,11 +235,7 @@ export function CommandPalette() {
 
   // Combined flat list for keyboard arrow navigation
   const allResults = useMemo(() => {
-    const list: Array<{
-      id: string
-      type: 'app' | 'nav' | 'action'
-      data: any
-    }> = []
+    const list: ResultItem[] = []
 
     filteredApps.forEach((app) => list.push({ id: app.id, type: 'app', data: app }))
     filteredActions.forEach((act) => list.push({ id: act.id, type: 'action', data: act }))
@@ -237,10 +244,13 @@ export function CommandPalette() {
     return list
   }, [filteredApps, filteredActions, filteredNav])
 
-  // Reset selected index when results change
-  useEffect(() => {
+  // Reset selected index when results change (adjust state during render)
+  const resultsKey = `${query}\u0000${allResults.length}`
+  const [prevResultsKey, setPrevResultsKey] = useState(resultsKey)
+  if (prevResultsKey !== resultsKey) {
+    setPrevResultsKey(resultsKey)
     setSelectedIndex(0)
-  }, [query, allResults.length])
+  }
 
   // Keyboard navigation within the list
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
@@ -258,11 +268,11 @@ export function CommandPalette() {
     }
   }
 
-  function executeItem(item: { id: string; type: string; data: any }) {
+  function executeItem(item: ResultItem) {
     setIsOpen(false)
     if (item.type === 'app') {
       router.push(`/applications/${item.data.slug}`)
-    } else if (item.data.action) {
+    } else {
       item.data.action()
     }
   }

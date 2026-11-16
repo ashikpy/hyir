@@ -30,6 +30,7 @@ import {
 import { linkSocial, signIn } from '@/lib/auth-client'
 import { ApplicationStatus } from '@prisma/client'
 import { CompanyLogo } from '@/components/ui/avatars'
+import { useMounted } from '@/components/ui/use-mounted'
 
 interface InboxSyncModalProps {
   isOpen: boolean
@@ -59,7 +60,7 @@ const statusColors: Record<ApplicationStatus, { bg: string; text: string; border
 
 export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const router = useRouter()
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
   const [isScanning, startScanTransition] = useTransition()
   const [isApplying, startApplyTransition] = useTransition()
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
@@ -74,10 +75,6 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
   const [appliedStats, setAppliedStats] = useState<{ updated: number; created: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hasScanned, setHasScanned] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     if (isOpen) {
@@ -154,8 +151,8 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
           setSelectedIds(initialSelected)
           setIsGoogleConnected(true)
         }
-      } catch (err: any) {
-        setError(err?.message || 'Something went wrong during inbox scan.')
+      } catch (err: unknown) {
+        setError((err instanceof Error && err.message) || 'Something went wrong during inbox scan.')
       }
     })
   }
@@ -252,8 +249,8 @@ export function InboxSyncModal({ isOpen, onClose }: InboxSyncModalProps) {
         } else {
           setError(res.error || 'Failed to apply updates.')
         }
-      } catch (err: any) {
-        setError(err?.message || 'Error applying updates.')
+      } catch (err: unknown) {
+        setError((err instanceof Error && err.message) || 'Error applying updates.')
       }
     })
   }

@@ -43,7 +43,7 @@ export function FollowUpCard({ applicationId, nextFollowUpDate }: FollowUpCardPr
       setSuccessMsg('Scheduled on Google Calendar!')
       setIsOpen(false)
       router.refresh()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to schedule follow up:', err)
     } finally {
       setIsLoading(false)

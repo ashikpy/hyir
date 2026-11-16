@@ -16,6 +16,15 @@ const DEFAULT_SUGGESTIONS = [
   'Singapore',
 ]
 
+interface PhotonFeature {
+  properties: {
+    name?: string
+    city?: string
+    state?: string
+    country?: string
+  }
+}
+
 export function LocationInput({
   name = 'location',
   defaultValue = '',
@@ -39,9 +48,12 @@ export function LocationInput({
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
+  // Sync local value when defaultValue prop changes (adjust state during render)
+  const [prevDefaultValue, setPrevDefaultValue] = useState(defaultValue)
+  if (prevDefaultValue !== defaultValue) {
+    setPrevDefaultValue(defaultValue)
     setValue(defaultValue)
-  }, [defaultValue])
+  }
 
   // Handle outside click to close dropdown
   useEffect(() => {
@@ -80,7 +92,7 @@ export function LocationInput({
       }
 
       if (data.features && Array.isArray(data.features)) {
-        data.features.forEach((f: any) => {
+        data.features.forEach((f: PhotonFeature) => {
           const p = f.properties
           const parts: string[] = []
           if (p.name) parts.push(p.name)

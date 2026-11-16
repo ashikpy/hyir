@@ -80,9 +80,9 @@ export async function getValidGoogleAccessToken(
 
     // Return existing token as fallback
     return { token: account.accessToken };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Error retrieving/refreshing Google access token:", err);
-    return { token: null, error: err?.message || "Failed to authenticate with Google" };
+    return { token: null, error: (err instanceof Error && err.message) || "Failed to authenticate with Google" };
   }
 }
 
@@ -116,9 +116,18 @@ function decodeBase64Url(data: string): string {
 }
 
 /**
+ * Minimal shape of a Gmail API message payload / MIME part
+ */
+interface GmailPayloadPart {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: GmailPayloadPart[];
+}
+
+/**
  * Extracts plaintext content recursively from Gmail payload parts
  */
-function extractBodyFromPayload(payload: any): string {
+function extractBodyFromPayload(payload: GmailPayloadPart | null | undefined): string {
   if (!payload) return "";
 
   if (payload.body?.data && payload.mimeType === "text/plain") {
@@ -270,8 +279,8 @@ export async function fetchRecentJobEmails(
     const emails = results.filter((e): e is RawJobEmail => e !== null);
 
     return { success: true, emails };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Error in fetchRecentJobEmails:", err);
-    return { success: false, emails: [], error: err?.message || "Failed to fetch emails" };
+    return { success: false, emails: [], error: (err instanceof Error && err.message) || "Failed to fetch emails" };
   }
 }

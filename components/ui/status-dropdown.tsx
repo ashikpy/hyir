@@ -122,9 +122,11 @@ export function StatusDropdown({ applicationId, initialStatus, className = '' }:
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Keep local status in sync if initialStatus changes
-  useEffect(() => {
+  const [prevInitialStatus, setPrevInitialStatus] = useState(initialStatus)
+  if (prevInitialStatus !== initialStatus) {
+    setPrevInitialStatus(initialStatus)
     setCurrentStatus(initialStatus)
-  }, [initialStatus])
+  }
 
   // Close dropdown on click outside or Escape
   useEffect(() => {

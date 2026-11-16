@@ -263,7 +263,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       }
       setGcalSuccessMsg(`Follow-up scheduled on Google Calendar!`)
       router.refresh()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to schedule calendar follow-up:', err)
     } finally {
       setSchedulingGCalId(null)
@@ -335,8 +335,10 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
     return applications.find((a) => a.id === activeAppId) || null
   }, [applications, activeAppId])
 
-  // Populate drawer form when active app changes
-  useEffect(() => {
+  // Populate drawer form when active app changes (adjust state during render)
+  const [prevActiveApp, setPrevActiveApp] = useState(activeApp)
+  if (prevActiveApp !== activeApp) {
+    setPrevActiveApp(activeApp)
     if (activeApp) {
       setFormUrl(activeApp.applicationUrl || '')
       setFormSource(activeApp.source || extractAppSource(activeApp) || '')
@@ -351,7 +353,7 @@ export function TriageView({ applications }: { applications: TriageApp[] }) {
       setFormStatus(activeApp.status)
       setSaveSuccess(false)
     }
-  }, [activeApp])
+  }
 
   // Keyboard navigation
   useEffect(() => {

@@ -63,9 +63,12 @@ export function RoleInput({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
+  // Sync local value when defaultValue prop changes (adjust state during render)
+  const [prevDefaultValue, setPrevDefaultValue] = useState(defaultValue)
+  if (prevDefaultValue !== defaultValue) {
+    setPrevDefaultValue(defaultValue)
     setValue(defaultValue)
-  }, [defaultValue])
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

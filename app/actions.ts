@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { ApplicationStatus, TimelineEventType, JobType, WorkplaceType } from '@prisma/client'
+import { ApplicationStatus, TimelineEventType, JobType, WorkplaceType, Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { requireUser, getCurrentUser } from '@/lib/auth-helpers'
 import { buildGoogleCalendarUrl, createGoogleCalendarApiEvent } from '@/lib/google-calendar'
@@ -15,8 +15,8 @@ export async function createApplication(formData: FormData) {
   const dateApplied = formData.get('dateApplied') as string
   const applicationUrl = formData.get('applicationUrl') as string
   const jobDescriptionUrl = formData.get('jobDescriptionUrl') as string
-  const jobType = (formData.get('jobType') as any) || 'FULL_TIME'
-  const workplaceType = (formData.get('workplaceType') as any) || 'REMOTE'
+  const jobType = (formData.get('jobType') as JobType | null) || 'FULL_TIME'
+  const workplaceType = (formData.get('workplaceType') as WorkplaceType | null) || 'REMOTE'
   const salary = formData.get('salary') as string
   const source = (formData.get('source') as string)?.trim() || null
   const location = formData.get('location') as string
@@ -242,7 +242,7 @@ export async function quickUpdateTriageField(
 
   if (!current) throw new Error('Application not found')
 
-  const updateData: any = { ...data }
+  const updateData: Prisma.ApplicationUpdateInput = { ...data }
   if ('dateApplied' in data) {
     updateData.dateApplied = data.dateApplied ? new Date(data.dateApplied) : null
   }
@@ -605,8 +605,8 @@ export async function importApplicationsData(
           companyName: record.companyName,
           roleTitle: record.roleTitle,
           status: record.status || 'SAVED',
-          jobType: (record.jobType as any) || 'FULL_TIME',
-          workplaceType: (record.workplaceType as any) || 'REMOTE',
+          jobType: (record.jobType as JobType | undefined) || 'FULL_TIME',
+          workplaceType: (record.workplaceType as WorkplaceType | undefined) || 'REMOTE',
           location: record.location || null,
           salary: record.salary || null,
           dateApplied: record.dateApplied ? new Date(record.dateApplied) : null,

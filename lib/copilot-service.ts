@@ -103,6 +103,29 @@ export interface ProcessCopilotRequestParams {
   apiKey?: string;
 }
 
+/** Gemini generateContent request turn */
+interface GeminiContent {
+  role: "user" | "model";
+  parts: Array<{ text: string }>;
+}
+
+/** Arguments the Gemini model may pass to a copilot function call */
+interface GeminiToolArgs {
+  companyName: string;
+  roleTitle: string;
+  newStatus?: string;
+  status?: string;
+  applicationUrl?: string;
+  salary?: string;
+  source?: string;
+  location?: string;
+  notes?: string;
+  daysFromNow?: number;
+  recipientName?: string;
+  purpose?: "follow_up" | "thank_you" | "status_inquiry" | "offer_negotiation";
+  context?: string;
+}
+
 export interface CopilotResponse {
   reply: string;
   action?: CopilotAction;
@@ -695,9 +718,9 @@ export async function processSmartLocalRequest(
           providerUsed: "smart-local",
           model: "Hyir Local Agent",
         };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return {
-          reply: `⚠️ ${err.message || "Could not find that application."}`,
+          reply: `⚠️ ${(err instanceof Error && err.message) || "Could not find that application."}`,
           suggestions: ["List all applications", "Pipeline summary"],
           providerUsed: "smart-local",
           model: "Hyir Local Agent",
@@ -712,7 +735,7 @@ export async function processSmartLocalRequest(
     lower.match(/track\s+(?:(?:a\s+)?(?:new\s+)?(?:application|job|role)\s+)?(?:for\s+)?([a-zA-Z0-9\s.-]+?)\s*-\s*([a-zA-Z0-9\s/.,&+-]+)/i);
 
   if (trackMatch) {
-    let company = trackMatch[1]
+    const company = trackMatch[1]
       .replace(/^(?:(?:a\s+)?(?:new\s+)?(?:application|job|role)\s+)?(?:for\s+)?/i, "")
       .replace(/via\s+.*$/i, "")
       .trim();
@@ -758,9 +781,9 @@ export async function processSmartLocalRequest(
         providerUsed: "smart-local",
         model: "Hyir Local Agent",
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
-        reply: `⚠️ Could not create application: ${err.message}`,
+        reply: `⚠️ Could not create application: ${err instanceof Error ? err.message : String(err)}`,
         suggestions: ["Pipeline summary"],
         providerUsed: "smart-local",
         model: "Hyir Local Agent",
@@ -802,9 +825,9 @@ export async function processSmartLocalRequest(
         providerUsed: "smart-local",
         model: "Hyir Local Agent",
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
-        reply: `⚠️ ${err.message}`,
+        reply: `⚠️ ${err instanceof Error ? err.message : String(err)}`,
         suggestions: ["Pipeline summary"],
         providerUsed: "smart-local",
         model: "Hyir Local Agent",
@@ -1033,7 +1056,7 @@ Instructions:
 5. Provide actionable suggestions at the end of each answer.`;
 
   try {
-    const contents: any[] = [];
+    const contents: GeminiContent[] = [];
 
     // Include recent history (last 4 turns)
     const recentHistory = history.slice(-4);
@@ -1085,7 +1108,7 @@ Instructions:
     const candidate = data.candidates?.[0];
     const parts = candidate?.content?.parts || [];
 
-    let toolCall: { name: string; args: any } | null = null;
+    let toolCall: { name: string; args: GeminiToolArgs } | null = null;
     let modelReply = "";
 
     for (const part of parts) {
@@ -1210,7 +1233,7 @@ Instructions:
       providerUsed: "gemini",
       model: "Gemini 3.5 Flash",
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Gemini invocation error, using local fallback:", err);
     return processSmartLocalRequest(userId, message, pipeline);
   }

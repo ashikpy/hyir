@@ -31,6 +31,7 @@ import {
   ExportableApplication
 } from '@/lib/import-export'
 import { ApplicationStatus } from '@prisma/client'
+import { useMounted } from '@/components/ui/use-mounted'
 
 interface ImportExportModalProps {
   isOpen: boolean
@@ -56,11 +57,10 @@ export function ImportExportModal({
   onClose,
   initialTab = 'export'
 }: ImportExportModalProps) {
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
   const [activeTab, setActiveTab] = useState<TabType>(initialTab)
 
   useEffect(() => {
-    setMounted(true)
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -135,11 +135,11 @@ export function ImportExportModal({
       if (exportFormat === 'csv') {
         const csvContent = exportToCSV(filtered)
         blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-        filename = `jobhunt-applications-${today}.csv`
+        filename = `hyir-applications-${today}.csv`
       } else {
         const jsonContent = exportToJSON(filtered)
         blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' })
-        filename = `jobhunt-backup-${today}.json`
+        filename = `hyir-backup-${today}.json`
       }
 
       const url = URL.createObjectURL(blob)
@@ -169,7 +169,7 @@ export function ImportExportModal({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'jobhunt-sample-template.csv'
+    a.download = 'hyir-sample-template.csv'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

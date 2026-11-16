@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { X, Plus, Calendar, Clock, FileText } from 'lucide-react'
 import { addTimelineEvent } from '@/app/actions'
 import { TimelineEventType } from '@prisma/client'
+import { useMounted } from '@/components/ui/use-mounted'
 
 const EVENT_TYPES: { label: string; value: TimelineEventType }[] = [
   { label: 'Status Change', value: 'STATUS_CHANGE' },
@@ -16,10 +17,9 @@ const EVENT_TYPES: { label: string; value: TimelineEventType }[] = [
 export function AddTimelineEventModal({ applicationId }: { applicationId: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
 
   useEffect(() => {
-    setMounted(true)
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsOpen(false)
     }

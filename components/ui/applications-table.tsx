@@ -115,7 +115,7 @@ export function ApplicationsTable({ applications }: { applications: ApplicationI
   const [sortAsc, setSortAsc] = useState(false)
 
   const filteredApplications = useMemo(() => {
-    let result = applications.filter((app) => {
+    const result = applications.filter((app) => {
       const matchSearch =
         search === '' ||
         app.companyName.toLowerCase().includes(search.toLowerCase()) ||

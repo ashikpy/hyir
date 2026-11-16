@@ -20,10 +20,13 @@ export function EditableNotes({ applicationId, initialNotes, className = '' }: E
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Keep local state in sync if initialNotes changes from server
-  useEffect(() => {
+  // (adjust state during render when the prop changes)
+  const [prevInitialNotes, setPrevInitialNotes] = useState(initialNotes)
+  if (prevInitialNotes !== initialNotes) {
+    setPrevInitialNotes(initialNotes)
     setNotes(initialNotes || '')
     setSavedNotes(initialNotes || '')
-  }, [initialNotes])
+  }
 
   // Auto-resize textarea when entering edit mode or typing
   useEffect(() => {

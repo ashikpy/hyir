@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { Application } from "@prisma/client"
 import { format, isPast, isToday, startOfDay } from "date-fns"
 import Link from "next/link"
 import { Clock, CheckCircle2, ArrowRight } from "lucide-react"
@@ -79,8 +80,8 @@ export default async function FollowUpsPage() {
   )
 }
 
-function FollowUpCard({ app, variant }: { app: any, variant: 'overdue' | 'today' | 'upcoming' }) {
-  const date = new Date(app.nextFollowUpDate)
+function FollowUpCard({ app, variant }: { app: Application, variant: 'overdue' | 'today' | 'upcoming' }) {
+  const date = new Date(app.nextFollowUpDate ?? 0)
   
   return (
     <div className={`p-4 border rounded-lg transition-colors group flex items-start justify-between gap-4 ${
